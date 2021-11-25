@@ -1,13 +1,123 @@
 cmake_minimum_required(VERSION 3.10)
 project(avcodec)
 
-list(APPEND AVCODEC_PUBLIC_HEADERS avcodec.h)
+list(APPEND AVCODEC_ALL_HEADERS avcodec.h)
+list(APPEND AVCODEC_ALL_HEADERS version.h)
+list(APPEND AVCODEC_ALL_HEADERS codec.h)
+list(APPEND AVCODEC_ALL_HEADERS codec_desc.h)
+list(APPEND AVCODEC_ALL_HEADERS codec_par.h)
+list(APPEND AVCODEC_ALL_HEADERS codec_id.h)
+list(APPEND AVCODEC_ALL_HEADERS defs.h)
+list(APPEND AVCODEC_ALL_HEADERS packet.h)
+list(APPEND AVCODEC_ALL_HEADERS version.h)
+
+foreach(AVCODEC_HEADER ${AVCODEC_ALL_HEADERS})
+    file(COPY ${AVCODEC_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libavcodec)
+endforeach()
 
 list(APPEND AVCODEC_SOURCES avcodec.c)
+list(APPEND AVCODEC_SOURCES avpacket.c)
+list(APPEND AVCODEC_SOURCES allcodecs.c)
+list(APPEND AVCODEC_SOURCES parser.c)
+list(APPEND AVCODEC_SOURCES options.c)
+list(APPEND AVCODEC_SOURCES decode.c)
+list(APPEND AVCODEC_SOURCES utils.c)
+list(APPEND AVCODEC_SOURCES codec_desc.c)
+list(APPEND AVCODEC_SOURCES encode.c)
+list(APPEND AVCODEC_SOURCES bsf.c)
+list(APPEND AVCODEC_SOURCES parsers.c)
+list(APPEND AVCODEC_SOURCES codec_par.c)
+list(APPEND AVCODEC_SOURCES profiles.c)
+list(APPEND AVCODEC_SOURCES bitstream_filters.c)
+list(APPEND AVCODEC_SOURCES golomb.c)
+list(APPEND AVCODEC_SOURCES bitstream.c)
+list(APPEND AVCODEC_SOURCES atsc_a53.c)
+list(APPEND AVCODEC_SOURCES mathtables.c)
+list(APPEND AVCODEC_SOURCES videodsp.c)
+list(APPEND AVCODEC_SOURCES cabac.c)
+list(APPEND AVCODEC_SOURCES startcode.c)
+
+#register avcodecs
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264dec.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_picture.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_refs.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_parser.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_cavlc.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_parse.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_sei.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_ps.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_slice.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264dsp.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264data.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_direct.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264chroma.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264qpel.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264pred.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_cabac.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_mb.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_mb.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_loopfilter.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264idct.c)
+
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h2645_parse.c)
+
+list(APPEND AVCODEC_REGISTERED_CODECS_IDS ff_h264_decoder)
+#creating codec_list.c
+
+set(CODEC_LIST_C_FILE_CONTENT)
+string(APPEND CODEC_LIST_C_FILE_CONTENT "static const AVCodec * const codec_list[] = {\n")
+
+foreach(AVCODEC_NAME ${AVCODEC_REGISTERED_CODECS_IDS})
+    string(APPEND CODEC_LIST_C_FILE_CONTENT "&${AVCODEC_NAME},\n")
+endforeach()
+
+string(APPEND CODEC_LIST_C_FILE_CONTENT "NULL\n")
+string(APPEND CODEC_LIST_C_FILE_CONTENT "}\;")
+
+file(WRITE ${CMAKE_BINARY_DIR}/generated/libavcodec/codec_list.c ${CODEC_LIST_C_FILE_CONTENT})
+
+#creating parser_list.c
+
+list(APPEND AVCODEC_REGISTERED_PARSERS_IDS ff_h264_parser)
+
+set(PARSER_LIST_C_FILE_CONTENT)
+string(APPEND PARSER_LIST_C_FILE_CONTENT "static const AVCodecParser * const parser_list[] = {\n")
+
+foreach(AVPARSER_NAME ${AVCODEC_REGISTERED_PARSERS_IDS})
+    string(APPEND PARSER_LIST_C_FILE_CONTENT "&${AVPARSER_NAME},\n")
+endforeach()
+
+string(APPEND PARSER_LIST_C_FILE_CONTENT "NULL\n")
+string(APPEND PARSER_LIST_C_FILE_CONTENT "}\;")
+
+file(WRITE ${CMAKE_BINARY_DIR}/generated/libavcodec/parser_list.c ${PARSER_LIST_C_FILE_CONTENT})
+
+#BSF_LIST
+#list(APPEND AVCODEC_REGISTERED_BIT_STREAM_FILTERS )
+set(BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT)
+
+string(APPEND BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT " static const AVBitStreamFilter * const bitstream_filters[] = {")
+
+foreach(BIT_STREAM_FILTER ${AVCODEC_REGISTERED_BIT_STREAM_FILTERS})
+    string(APPEND BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT "&${BIT_STREAM_FILTER},\n")
+endforeach()
+
+string(APPEND BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT "NULL\n")
+string(APPEND BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT "}\;")
+
+file(WRITE ${CMAKE_BINARY_DIR}/generated/libavcodec/bsf_list.c ${BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT})
 
 
-add_library(avcodec OBJECT ${AVCODEC_SOURCES})
-target_include_directories(avcodec PUBLIC ${CMAKE_BINARY_DIR})
+
+add_library(avcodec OBJECT ${AVCODEC_SOURCES} ${AVCODEC_REGISTERED_CODECS_SOURCES})
+target_include_directories(avcodec PUBLIC ${CMAKE_BINARY_DIR}/include/)
+target_include_directories(avcodec PRIVATE ${CMAKE_BINARY_DIR}/generated/)
+
+
+#TODO: avcodec.c attribute_align_arg
+#only avcodec_open2 function in avcodec.c require this deco, it is located in libavutils/internal.h but avcodec.c does not include it
+#ffmpeg is madness inside OMG
+target_compile_definitions(avcodec PUBLIC attribute_align_arg=)
 
 target_link_libraries(avcodec PUBLIC ffmpeg_config)
 
