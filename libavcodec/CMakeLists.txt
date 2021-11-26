@@ -10,6 +10,19 @@ list(APPEND AVCODEC_ALL_HEADERS codec_id.h)
 list(APPEND AVCODEC_ALL_HEADERS defs.h)
 list(APPEND AVCODEC_ALL_HEADERS packet.h)
 list(APPEND AVCODEC_ALL_HEADERS version.h)
+list(APPEND AVCODEC_ALL_HEADERS bsf.h)
+list(APPEND AVCODEC_ALL_HEADERS bytestream.h)
+list(APPEND AVCODEC_ALL_HEADERS internal.h)
+list(APPEND AVCODEC_ALL_HEADERS packet_internal.h)
+list(APPEND AVCODEC_ALL_HEADERS raw.h)
+list(APPEND AVCODEC_ALL_HEADERS mathops.h)
+list(APPEND AVCODEC_ALL_HEADERS xiph.h)
+list(APPEND AVCODEC_ALL_HEADERS png.h) #its need for libavformat/id3v2.c
+list(APPEND AVCODEC_ALL_HEADERS pngdsp.h) #its need for png.h
+list(APPEND AVCODEC_ALL_HEADERS mpeg4audio.h)
+list(APPEND AVCODEC_ALL_HEADERS get_bits.h)
+list(APPEND AVCODEC_ALL_HEADERS put_bits.h)
+list(APPEND AVCODEC_ALL_HEADERS vlc.h)
 
 foreach(AVCODEC_HEADER ${AVCODEC_ALL_HEADERS})
     file(COPY ${AVCODEC_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libavcodec)
@@ -36,6 +49,8 @@ list(APPEND AVCODEC_SOURCES mathtables.c)
 list(APPEND AVCODEC_SOURCES videodsp.c)
 list(APPEND AVCODEC_SOURCES cabac.c)
 list(APPEND AVCODEC_SOURCES startcode.c)
+list(APPEND AVCODEC_SOURCES raw.c)
+list(APPEND AVCODEC_SOURCES xiph.c)
 
 #register avcodecs
 list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264dec.c)
@@ -61,8 +76,9 @@ list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264idct.c)
 
 list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h2645_parse.c)
 
-list(APPEND AVCODEC_REGISTERED_CODECS_IDS ff_h264_decoder)
 #creating codec_list.c
+list(APPEND AVCODEC_REGISTERED_CODECS_IDS ff_h264_decoder)
+
 
 set(CODEC_LIST_C_FILE_CONTENT)
 string(APPEND CODEC_LIST_C_FILE_CONTENT "static const AVCodec * const codec_list[] = {\n")
@@ -96,7 +112,7 @@ file(WRITE ${CMAKE_BINARY_DIR}/generated/libavcodec/parser_list.c ${PARSER_LIST_
 #list(APPEND AVCODEC_REGISTERED_BIT_STREAM_FILTERS )
 set(BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT)
 
-string(APPEND BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT " static const AVBitStreamFilter * const bitstream_filters[] = {")
+string(APPEND BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT " static const AVBitStreamFilter * const bitstream_filters[] = {\n")
 
 foreach(BIT_STREAM_FILTER ${AVCODEC_REGISTERED_BIT_STREAM_FILTERS})
     string(APPEND BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT "&${BIT_STREAM_FILTER},\n")
@@ -117,9 +133,9 @@ target_include_directories(avcodec PRIVATE ${CMAKE_BINARY_DIR}/generated/)
 #TODO: avcodec.c attribute_align_arg
 #only avcodec_open2 function in avcodec.c require this deco, it is located in libavutils/internal.h but avcodec.c does not include it
 #ffmpeg is madness inside OMG
-target_compile_definitions(avcodec PUBLIC attribute_align_arg=)
+target_compile_definitions(avcodec PRIVATE attribute_align_arg=)
 
-target_link_libraries(avcodec PUBLIC ffmpeg_config)
+target_link_libraries(avcodec PRIVATE ffmpeg_config)
 
 add_library(avcodec_static STATIC $<TARGET_OBJECTS:avcodec>)
 

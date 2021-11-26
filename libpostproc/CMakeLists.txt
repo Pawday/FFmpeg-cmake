@@ -1,0 +1,19 @@
+cmake_minimum_required(VERSION 3.10)
+
+project(POSTPROC)
+
+list(APPEND POSTPROC_ALL_HEADERS postprocess.h)
+list(APPEND POSTPROC_ALL_HEADERS version.h)
+
+foreach(POSTPROC_HEADER ${POSTPROC_ALL_HEADERS})
+    file(COPY ${POSTPROC_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libpostproc/)
+endforeach()
+
+list(APPEND POSTPROC_SOURCES postprocess.c)
+
+add_library(postproc OBJECT ${POSTPROC_SOURCES})
+
+target_link_libraries(postproc PRIVATE ffmpeg_config)
+target_link_libraries(postproc PRIVATE avutil)
+
+target_include_directories(postproc PUBLIC ${CMAKE_BINARY_DIR}/include/)
