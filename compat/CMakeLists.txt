@@ -1,10 +1,13 @@
-cmake_minimum_required(VERSION 3.10)
-
 project(FFMPEG_COMPAT)
 
-#list(APPEND FFMPEG_COMPAT_PUBLIC_HEADERS w32pthreads.h)
-list(APPEND FFMPEG_COMPAT_PUBLIC_HEADERS va_copy.h)
 
-foreach(FFMPEG_COMPAT_HEADER ${FFMPEG_COMPAT_PUBLIC_HEADERS})
+list(APPEND FFMPEG_COMPAT_ALL_HEADERS va_copy.h)
+list(APPEND FFMPEG_COMPAT_ALL_HEADERS w32pthreads.h)
+
+add_library(ffmpeg_compat INTERFACE)
+
+add_subdirectory(atomics)
+
+foreach(FFMPEG_COMPAT_HEADER ${FFMPEG_COMPAT_ALL_HEADERS})
     file(COPY ${FFMPEG_COMPAT_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/compat)
 endforeach()

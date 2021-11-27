@@ -16,12 +16,11 @@ target_compile_definitions(ffmpeg_config INTERFACE HAVE_PTHREADS=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_W32THREADS=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_OS2THREADS=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_ISNAN=0)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_MMXEXT=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_MMX2=HAVE_MMXEXT)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_MMX2=HAVE_MMXEXT)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_MMX_INLINE=0)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_MMXEXT=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_MMX=0)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_THREADS=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_AV_CONFIG_H=1)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_ALTIVEC=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_MMXEXT_INLINE=0)
@@ -80,6 +79,13 @@ target_compile_definitions(ffmpeg_config INTERFACE SWS_MAX_FILTER_SIZE=256)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     add_compile_options("-w") #TODO set it for all targets individually or remove for WARNING HELL
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    cmake_policy(SET CMP0092 NEW) #cmake disable std MSVC warnings in CMAKE_C_FLAGS
+    #CMAKE_DEPFILE_FLAGS_C var in windows contains only /showIncludes and produce include tree
+    set(CMAKE_DEPFILE_FLAGS_C "") #erase it
+    add_compile_options("/w") #TODO set it for all targets individually or remove for WARNING HELL
 endif()
 
 file(WRITE ${CMAKE_BINARY_DIR}/include/config.h "//cmake config will define all that")
