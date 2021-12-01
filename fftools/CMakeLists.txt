@@ -10,6 +10,7 @@ list(APPEND FFMPEG_SOURCES ffmpeg_filter.c)
 
 add_executable(ffmpeg ${FFMPEG_SOURCES})
 
+target_link_libraries(ffmpeg PRIVATE ffmpeg_config)
 target_link_libraries(ffmpeg PRIVATE avcodec)
 target_link_libraries(ffmpeg PRIVATE postproc)
 target_link_libraries(ffmpeg PRIVATE avutil)

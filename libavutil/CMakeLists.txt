@@ -1,12 +1,33 @@
 cmake_minimum_required(VERSION 3.15)
 project(avutil)
 
-#TODO: configure avconfig and ffversion headers
-set(AVUTIL_CONFIG_HEADER avconfig.h)
-set(AVUTIL_FFVERSION_HEADER ffversion.h)
+#TODO: when install will come, generate ffversion.h and avconfig.h only for install
 
-file(COPY ${AVUTIL_CONFIG_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libavutil)
-file(COPY ${AVUTIL_FFVERSION_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libavutil)
+#GENERATING ffversion.h
+file(WRITE ${CMAKE_BINARY_DIR}/include/libavutil/ffversion.h "//configured via cmake\n")
+file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/ffversion.h "")
+file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/ffversion.h "#ifndef AVUTIL_FFVERSION_H\n")
+file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/ffversion.h "#define AVUTIL_FFVERSION_H\n")
+file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/ffversion.h "#define FFMPEG_VERSION \"TODO\"\n") #TODO set FFMPEG_VERSION
+file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/ffversion.h "#endif")
+
+
+include (TestBigEndian)
+TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
+if(IS_BIG_ENDIAN)
+    set(AV_HAVE_BIGENDIAN_DEF 1)
+else()
+    set(AV_HAVE_BIGENDIAN_DEF 0)
+endif()
+
+#GENERATING avconfig.h
+file(WRITE ${CMAKE_BINARY_DIR}/include/libavutil/avconfig.h "//configured via cmake\n")
+file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/avconfig.h "#ifndef AVUTIL_AVCONFIG_H\n")
+file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/avconfig.h "#define AVUTIL_AVCONFIG_H\n")
+file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/avconfig.h "#define AV_HAVE_BIGENDIAN ${AV_HAVE_BIGENDIAN_DEF}\n")
+file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/avconfig.h "#define AV_HAVE_FAST_UNALIGNED 0\n")
+file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/avconfig.h "#endif \n")
+
 
 list(APPEND AVUTIL_ALL_HEADERS samplefmt.h)
 list(APPEND AVUTIL_ALL_HEADERS attributes.h)
@@ -116,7 +137,46 @@ list(APPEND AVUTIL_SOURCES dovi_meta.c)
 list(APPEND AVUTIL_SOURCES spherical.c)
 list(APPEND AVUTIL_SOURCES file_open.c)
 
+
+
+#!!!!!!!!!! EVIL FUNCTION REPLACEMENT HACK FOR NONOPTIMISED COMPILERS
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+
+    set(AVUTIL_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "")
+
+    string(APPEND AVUTIL_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "//THIS FILE IS PART OF EVIL HACK FOR UNOPTIMISED COMPILERS WHEN THAT FUNCTIONS ARE NOT BUILDING BECAUSE CONFIGS\n")
+
+    #TODO: make it config depended
+
+    #if not ARCH_AARCH64 ARCH_ARM ARCH_PPC ARCH_X86 ARCH_MIPS ARCH_ALPHA
+    list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_mips(void){return 0\;}")
+    list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_aarch64(void){return 0\;}")
+    list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_arm(void){return 0\;}")
+    list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_ppc(void){return 0\;}")
+    list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_x86(void){return 0\;}")
+
+    list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_mips(void){return 0\;}")
+    list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_aarch64(void){return 0\;}")
+    list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_arm(void){return 0\;}")
+    list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_ppc(void){return 0\;}")
+    list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_x86(void){return 0\;}")
+
+    foreach(CONTENT ${AVUTIL_EMPTY_FUNCTIONS})
+        string(APPEND AVUTIL_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "${CONTENT}\n")
+    endforeach()
+
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c "${AVUTIL_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT}")
+
+endif()
+
 add_library(avutil OBJECT ${AVUTIL_SOURCES})
+
+if(MSVC)
+    message(WARNING "AVUTIL: adding empty_functions.c hack for unoptimised MSVC")
+    target_sources(avutil PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c)
+endif()
+
+
 add_library(avutil_static STATIC $<TARGET_OBJECTS:avutil>)
 
 target_link_libraries(avutil PRIVATE ffmpeg_config)

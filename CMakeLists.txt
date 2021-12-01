@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 
 project(FFMPEG)
 
@@ -12,6 +12,7 @@ target_compile_definitions(ffmpeg_config INTERFACE FFMPEG_LICENSE="")
 
 target_compile_definitions(ffmpeg_config INTERFACE CC_IDENT="")
 
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_THREADS=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_PTHREADS=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_W32THREADS=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_OS2THREADS=0)
@@ -29,6 +30,8 @@ target_compile_definitions(ffmpeg_config INTERFACE HAVE_AMD3DNOW_INLINE=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_X86ASM=0)
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_X86_32=0)
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_X86_64=0)
+
+target_link_libraries(ffmpeg_config INTERFACE ffmpeg_compat)
 
 include (TestBigEndian)
 TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
@@ -56,6 +59,7 @@ target_compile_definitions(ffmpeg_config INTERFACE CONFIG_H264_VAAPI_HWACCEL=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_H264_VIDEOTOOLBOX_HWACCEL=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_H264_VDPAU_HWACCEL=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_NETWORK=0)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_XVMC=0)
 
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_AVUTIL=1)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_AVCODEC=1)
@@ -74,6 +78,7 @@ target_compile_definitions(ffmpeg_config INTERFACE ARCH_ARM=0)
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_PPC=0)
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_X86=0)
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_MIPS=0)
+target_compile_definitions(ffmpeg_config INTERFACE ARCH_ALPHA=0)
 
 target_compile_definitions(ffmpeg_config INTERFACE SWS_MAX_FILTER_SIZE=256)
 

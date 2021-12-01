@@ -25,7 +25,50 @@ list(APPEND SWSCALE_SOURCES alphablend.c)
 list(APPEND SWSCALE_SOURCES swscale_unscaled.c)
 
 
+#!!!!!!!!!! EVIL FUNCTION REPLACEMENT HACK FOR NONOPTIMISED COMPILERS
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+
+    set(SWSCALE_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "")
+
+    string(APPEND SWSCALE_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "//THIS FILE IS PART OF EVIL HACK FOR UNOPTIMISED COMPILERS WHEN THAT FUNCTIONS ARE NOT BUILDING BECAUSE CONFIGS\n")
+
+    #TODO: make it config depended
+
+    #if not ARCH_AARCH64 ARCH_ARM ARCH_PPC ARCH_X86 ARCH_MIPS ARCH_ALPHA
+
+    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_sws_init_swscale_ppc(void* c){}")
+    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_sws_init_swscale_x86(void* c){}")
+    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_sws_init_swscale_aarch64(void* c){}")
+    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_sws_init_swscale_arm(void* c){}")
+
+    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void* ff_yuv2rgb_init_x86(void* c){return (void*)0\;}")
+    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void* ff_yuv2rgb_init_ppc(void* c){return (void*)0\;}")
+
+    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_yuv2rgb_init_tables_ppc(void* c, const int inv_table[4], int brightness, int contrast, int saturation){}")
+
+    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void rgb2rgb_init_aarch64(void){}")
+    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void rgb2rgb_init_x86(void){}")
+
+    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_get_unscaled_swscale_ppc(void* c){}")
+    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_get_unscaled_swscale_arm(void* c){}")
+    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_get_unscaled_swscale_aarch64(void* c){}")
+
+
+    foreach(CONTENT ${SWSCALE_EMPTY_FUNCTIONS})
+        string(APPEND SWSCALE_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "${CONTENT}\n")
+    endforeach()
+
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c "${SWSCALE_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT}")
+
+endif()
+
+
 add_library(swscale OBJECT ${SWSCALE_SOURCES})
 
-target_link_libraries(swscale PUBLIC ffmpeg_config)
-target_link_libraries(swscale PUBLIC avutil)
+if(MSVC)
+    message(WARNING "SWSCALE: adding empty_functions.c hack for unoptimised MSVC")
+    target_sources(swscale PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c)
+endif()
+
+target_link_libraries(swscale PRIVATE ffmpeg_config)
+target_link_libraries(swscale PRIVATE avutil)

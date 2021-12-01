@@ -73,6 +73,10 @@ list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_mb.c)
 list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_mb.c)
 list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264_loopfilter.c)
 list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h264idct.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES error_resilience.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES error_resilience.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES me_cmp.c)
+list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES simple_idct.c)
 
 list(APPEND AVCODEC_REGISTERED_CODECS_SOURCES h2645_parse.c)
 
@@ -125,9 +129,85 @@ file(WRITE ${CMAKE_BINARY_DIR}/generated/libavcodec/bsf_list.c ${BIT_STREAM_FILT
 
 
 
+#!!!!!!!!!! EVIL FUNCTION REPLACEMENT HACK FOR NONOPTIMISED COMPILERS
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+
+    set(AVCODEC_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "")
+
+    string(APPEND AVCODEC_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "//THIS FILE IS PART OF EVIL HACK FOR UNOPTIMISED COMPILERS WHEN THAT FUNCTIONS ARE NOT BUILDING BECAUSE CONFIGS\n")
+
+    #TODO: make it config depended
+
+    #if not CONFIG_FRAME_THREAD_ENCODER,HAVE_THREADS,
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "int ff_frame_thread_encoder_init(void* avctx){return 234\;}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_frame_thread_encoder_free(void* avctx){};")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_thread_flush(void* avctx){};")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_thread_free(void* s){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "int ff_thread_decode_frame(void* avctx, void* picture, int* got_picture_ptr, void* avpkt){return 0\;}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "int ff_thread_video_encode_frame(void* avctx, void* pkt, void* frame, int* got_packet_ptr){return 0\;}")
+
+    #if not ARCH_AARCH64 ARCH_ARM ARCH_PPC ARCH_X86 ARCH_MIPS ARCH_ALPHA
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_videodsp_init_aarch64(void* ctx, int bpc){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_videodsp_init_arm(void* ctx, int bpc){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_videodsp_init_ppc(void* ctx, int bpc){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_videodsp_init_x86(void* ctx, int bpc){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_videodsp_init_mips(void* ctx, int bpc){}")
+
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264dsp_init_aarch64(void* c, const int bit_depth,const int chroma_format_idc){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264dsp_init_arm(void* c, const int bit_depth,const int chroma_format_idc){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264dsp_init_ppc(void* c, const int bit_depth,const int chroma_format_idc){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264dsp_init_x86(void* c, const int bit_depth,const int chroma_format_idc){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264dsp_init_mips(void* c, const int bit_depth,const int chroma_format_idc){}")
+
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264chroma_init_aarch64(void* c, int bit_depth){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264chroma_init_arm(void* c, int bit_depth){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264chroma_init_ppc(void* c, int bit_depth){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264chroma_init_x86(void* c, int bit_depth){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264chroma_init_mips(void* c, int bit_depth){}")
+
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264qpel_init_aarch64(void* c, int bit_depth){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264qpel_init_arm(void* c, int bit_depth){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264qpel_init_ppc(void* c, int bit_depth){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264qpel_init_x86(void* c, int bit_depth){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264qpel_init_mips(void* c, int bit_depth){}")
+
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264_pred_init_aarch64(void* h, int codec_id,const int bit_depth,const int chroma_format_idc){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264_pred_init_arm(void* h, int codec_id,const int bit_depth, const int chroma_format_idc){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264_pred_init_x86(void* h, int codec_id,const int bit_depth, const int chroma_format_idc){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_h264_pred_init_mips(void* h, int codec_id,const int bit_depth, const int chroma_format_idc){}")
+
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_me_cmp_init_alpha(void* c, void* avctx){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_me_cmp_init_arm(void* c, void* avctx){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_me_cmp_init_ppc(void* c, void* avctx){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_me_cmp_init_x86(void* c, void* avctx){}")
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_me_cmp_init_mips(void* c, void* avctx){}")
+
+
+    #if not CONFIG_MPEGVIDEO
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_print_debug_info2(void* avctx, void* pict, void* mbskip_table, int* mbtype_table, int* qscale_table, int (*motion_val[2])[2], int* low_delay, int mb_width, int mb_height, int mb_stride, int quarter_sample){}")
+
+
+    foreach(CONTENT ${AVCODEC_EMPTY_FUNCTIONS})
+        string(APPEND AVCODEC_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "${CONTENT}\n")
+    endforeach()
+
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c "${AVCODEC_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT}")
+
+endif()
+
+
+
+
+
 add_library(avcodec OBJECT ${AVCODEC_SOURCES} ${AVCODEC_REGISTERED_CODECS_SOURCES})
 target_include_directories(avcodec PUBLIC ${CMAKE_BINARY_DIR}/include/)
 target_include_directories(avcodec PRIVATE ${CMAKE_BINARY_DIR}/generated/)
+
+if(MSVC)
+    message(WARNING "AVCODEC: adding empty_functions.c hack for unoptimised MSVC")
+    target_sources(avcodec PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c)
+endif()
 
 
 #TODO: avcodec.c attribute_align_arg
