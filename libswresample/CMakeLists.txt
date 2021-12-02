@@ -54,9 +54,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 add_library(swresample OBJECT ${SWRESAMLE_SOURCES})
+add_library(swresample_static STATIC $<TARGET_OBJECTS:swresample>)
 
 if(MSVC)
-    message(WARNING "SWSCALE: adding empty_functions.c hack for unoptimised MSVC")
+    message(WARNING "SWRESAMPLE: adding empty_functions.c hack for unoptimised MSVC")
     target_sources(swresample PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c)
 endif()
 

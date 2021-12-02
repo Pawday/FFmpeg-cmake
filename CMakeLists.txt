@@ -28,6 +28,29 @@ target_compile_definitions(ffmpeg_config INTERFACE HAVE_MMXEXT_INLINE=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_NEON=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_AMD3DNOW_INLINE=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_X86ASM=0)
+if(WIN32)
+    target_compile_definitions(ffmpeg_config INTERFACE HAVE_MKSTEMP=0)
+else()
+    target_compile_definitions(ffmpeg_config INTERFACE HAVE_MKSTEMP=1)
+endif()
+
+
+#TODO: detect each function and set to 0 if missing (they are in math.h)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_CBRT=1)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_CBRTF=1)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_COPYSIGN=1)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_ERF=1)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_HYPOT=1)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_RINT=1)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_LRINT=1)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_LRINTF=1)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_ROUND=1)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_ROUNDF=1)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_TRUNC=1)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_TRUNCF=1)
+
+
+
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_X86_32=0)
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_X86_64=0)
 

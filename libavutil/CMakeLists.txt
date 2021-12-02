@@ -185,3 +185,10 @@ target_compile_definitions(avutil PRIVATE emms_c)
 
 target_include_directories(avutil PUBLIC ${CMAKE_BINARY_DIR}/include/)
 target_compile_definitions(avutil PRIVATE HAVE_AV_CONFIG_H)
+
+if (UNIX)
+    #on unix we need manually link with math library
+    #libm library on linux is only shared, and its cascades to others
+    find_library(MATH_LIBRARY NAMES m)
+    target_link_libraries(avutil_static PRIVATE ${MATH_LIBRARY})
+endif()

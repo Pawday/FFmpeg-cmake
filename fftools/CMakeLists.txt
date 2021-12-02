@@ -19,3 +19,10 @@ target_link_libraries(ffmpeg PRIVATE swresample)
 target_link_libraries(ffmpeg PRIVATE avfilter)
 target_link_libraries(ffmpeg PRIVATE avformat)
 target_link_libraries(ffmpeg PRIVATE avdevice)
+
+if (UNIX)
+    #un unix we need manually link with math library
+    #TODO: if ffmpeg would link dynamically do not link with libm because dynlib libm will cascade on linux from top
+    find_library(MATH_LIBRARY NAMES m)
+    target_link_libraries(ffmpeg PRIVATE ${MATH_LIBRARY})
+endif()

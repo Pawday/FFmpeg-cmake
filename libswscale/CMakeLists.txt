@@ -65,6 +65,8 @@ endif()
 
 add_library(swscale OBJECT ${SWSCALE_SOURCES})
 
+add_library(swscale_static STATIC $<TARGET_OBJECTS:swscale>)
+
 if(MSVC)
     message(WARNING "SWSCALE: adding empty_functions.c hack for unoptimised MSVC")
     target_sources(swscale PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c)

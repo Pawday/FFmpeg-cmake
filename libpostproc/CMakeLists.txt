@@ -12,6 +12,7 @@ endforeach()
 list(APPEND POSTPROC_SOURCES postprocess.c)
 
 add_library(postproc OBJECT ${POSTPROC_SOURCES})
+add_library(postproc_static STATIC $<TARGET_OBJECTS:postproc>)
 
 target_link_libraries(postproc PRIVATE ffmpeg_config)
 target_link_libraries(postproc PRIVATE avutil)

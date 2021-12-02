@@ -82,6 +82,7 @@ file(WRITE ${CMAKE_BINARY_DIR}/generated/libavformat/protocol_list.c ${PROTOCOL_
 
 
 add_library(avformat OBJECT ${AVFORMAT_SOURCES})
+add_library(avformat_static STATIC $<TARGET_OBJECTS:avformat>)
 
 target_include_directories(avformat PRIVATE ${CMAKE_BINARY_DIR}/generated/)
 
