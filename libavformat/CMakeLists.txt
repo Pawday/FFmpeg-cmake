@@ -17,6 +17,7 @@ endforeach()
 
 list(APPEND AVFORMAT_SOURCES utils.c)
 list(APPEND AVFORMAT_SOURCES mux.c)
+list(APPEND AVFORMAT_SOURCES demux.c)
 list(APPEND AVFORMAT_SOURCES allformats.c)
 list(APPEND AVFORMAT_SOURCES aviobuf.c)
 list(APPEND AVFORMAT_SOURCES avio.c)
@@ -28,6 +29,7 @@ list(APPEND AVFORMAT_SOURCES protocols.c)
 list(APPEND AVFORMAT_SOURCES metadata.c)
 list(APPEND AVFORMAT_SOURCES dump.c)
 list(APPEND AVFORMAT_SOURCES sdp.c)
+list(APPEND AVFORMAT_SOURCES seek.c)
 
 
 #TODO: register all muxers and demuxers

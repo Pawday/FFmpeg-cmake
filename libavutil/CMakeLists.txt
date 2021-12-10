@@ -84,6 +84,7 @@ list(APPEND AVUTIL_ALL_HEADERS dovi_meta.h)
 list(APPEND AVUTIL_ALL_HEADERS replaygain.h)
 list(APPEND AVUTIL_ALL_HEADERS spherical.h)
 list(APPEND AVUTIL_ALL_HEADERS cpu_internal.h)
+list(APPEND AVUTIL_ALL_HEADERS slicethread.h)
 
 foreach(AVUTIL_HEADER ${AVUTIL_ALL_HEADERS})
     file(COPY ${AVUTIL_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libavutil/)
@@ -136,6 +137,7 @@ list(APPEND AVUTIL_SOURCES base64.c)
 list(APPEND AVUTIL_SOURCES dovi_meta.c)
 list(APPEND AVUTIL_SOURCES spherical.c)
 list(APPEND AVUTIL_SOURCES file_open.c)
+list(APPEND AVUTIL_SOURCES slicethread.c)
 
 
 
