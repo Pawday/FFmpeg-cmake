@@ -30,9 +30,17 @@ list(APPEND AVFORMAT_SOURCES metadata.c)
 list(APPEND AVFORMAT_SOURCES dump.c)
 list(APPEND AVFORMAT_SOURCES sdp.c)
 list(APPEND AVFORMAT_SOURCES seek.c)
+list(APPEND AVFORMAT_SOURCES rawdec.c)
+
+#set(APPEND AVFORMAT_REGISTERED_PROTOCOLS_SOURCES "") #its filled by each <protoname>_proto cmake script
+
+#set(APPEND AVFORMAT_REGISTERED_FORMATS_SOURCES "") #its filled by each  <formatname>_format cmake
 
 
 #TODO: register all muxers and demuxers
+
+include(h264raw_format.cmake)
+include(img2_format.cmake)
 
 #generating muxer_list.c
 #list(APPEND AVFORMAT_REGISTERED_MUXER_LIST_IDS muxer_id)
@@ -68,8 +76,12 @@ file(WRITE ${CMAKE_BINARY_DIR}/generated/libavformat/demuxer_list.c ${DEMUXER_LI
 
 #generating protocol_list.c
 #TODO: [avformat] register protocols
-
 #list(APPEND AVFORMAT_REGISTERED_PROTOCOLS_LIST_IDS protocol_id)
+
+
+include(file_proto.cmake)
+
+
 set(PROTOCOL_LIST_C_FILE_CONTENT)
 string(APPEND PROTOCOL_LIST_C_FILE_CONTENT "static const URLProtocol * const url_protocols[] = {\n")
 
@@ -84,6 +96,14 @@ file(WRITE ${CMAKE_BINARY_DIR}/generated/libavformat/protocol_list.c ${PROTOCOL_
 
 
 add_library(avformat OBJECT ${AVFORMAT_SOURCES})
+
+if (AVFORMAT_REGISTERED_PROTOCOLS_SOURCES)
+    target_sources(avformat PRIVATE ${AVFORMAT_REGISTERED_PROTOCOLS_SOURCES})
+endif ()
+if (AVFORMAT_REGISTERED_FORMATS_SOURCES)
+    target_sources(avformat PRIVATE ${AVFORMAT_REGISTERED_FORMATS_SOURCES})
+endif ()
+
 add_library(avformat_static STATIC $<TARGET_OBJECTS:avformat>)
 
 target_include_directories(avformat PRIVATE ${CMAKE_BINARY_DIR}/generated/)

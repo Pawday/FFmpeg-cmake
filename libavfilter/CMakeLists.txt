@@ -26,10 +26,23 @@ list(APPEND AVFILTER_SOURCES allfilters.c)
 list(APPEND AVFILTER_SOURCES graphparser.c)
 
 
+#set(APPEND AVFILTER_REGISTERED_FILTERS_SOURCES "") #its filled by each  <filtername>_filter cmake
+
+
 
 #generating filter_list.c
 #TODO: register all available filters
 #list(APPEND AVFILTER_REGISTERED_FILTERS_IDS filterid)
+
+
+list(APPEND AVFILTER_REGISTERED_FILTERS_IDS ff_asrc_abuffer) #standard audio filter defined in buffersrc.c
+list(APPEND AVFILTER_REGISTERED_FILTERS_IDS ff_vsrc_buffer) #standard video filter defined in buffersrc.c
+list(APPEND AVFILTER_REGISTERED_FILTERS_IDS ff_asink_abuffer) #standard audio filter defined in buffersink.c
+list(APPEND AVFILTER_REGISTERED_FILTERS_IDS ff_vsink_buffer) #standard video filter defined in buffersink.c
+
+include(vf_null_filter.cmake)
+include(vf_format_filter.cmake)
+include(vf_scale.cmake)
 
 set(FILTER_LIST_C_FILE_CONTENT)
 string(APPEND FILTER_LIST_C_FILE_CONTENT "static const AVFilter * const filter_list[] = {\n")
@@ -44,6 +57,10 @@ string(APPEND FILTER_LIST_C_FILE_CONTENT "}\;")
 file(WRITE ${CMAKE_BINARY_DIR}/generated/libavfilter/filter_list.c ${FILTER_LIST_C_FILE_CONTENT})
 
 add_library(avfilter OBJECT ${AVFILTER_SOURCES})
+
+if (AVFILTER_REGISTERED_FILTERS_SOURCES)
+    target_sources(avfilter PRIVATE ${AVFILTER_REGISTERED_FILTERS_SOURCES})
+endif ()
 
 target_link_libraries(avfilter PRIVATE avutil)
 

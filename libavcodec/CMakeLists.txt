@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(avcodec)
 
+add_library(avcodec_external_libraries INTERFACE) #["zlib (pngcodec)"]
+
 list(APPEND AVCODEC_ALL_HEADERS avcodec.h)
 list(APPEND AVCODEC_ALL_HEADERS version.h)
 list(APPEND AVCODEC_ALL_HEADERS codec.h)
@@ -23,6 +25,7 @@ list(APPEND AVCODEC_ALL_HEADERS mpeg4audio.h)
 list(APPEND AVCODEC_ALL_HEADERS get_bits.h)
 list(APPEND AVCODEC_ALL_HEADERS put_bits.h)
 list(APPEND AVCODEC_ALL_HEADERS vlc.h)
+list(APPEND AVCODEC_ALL_HEADERS golomb.h)
 
 foreach(AVCODEC_HEADER ${AVCODEC_ALL_HEADERS})
     file(COPY ${AVCODEC_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libavcodec)
@@ -51,6 +54,9 @@ list(APPEND AVCODEC_SOURCES cabac.c)
 list(APPEND AVCODEC_SOURCES startcode.c)
 list(APPEND AVCODEC_SOURCES raw.c)
 list(APPEND AVCODEC_SOURCES xiph.c)
+list(APPEND AVCODEC_SOURCES golomb.c)
+
+
 
 #register avcodecs
 set(AVCODEC_REGISTERED_CODECS_SOURCES "")
@@ -62,6 +68,8 @@ include(h264.cmake)
 #register bmp
 include(bmp.cmake)
 
+#register png
+include(png.cmake)
 
 set(CODEC_LIST_C_FILE_CONTENT)
 string(APPEND CODEC_LIST_C_FILE_CONTENT "static const AVCodec * const codec_list[] = {\n")
@@ -163,6 +171,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_me_cmp_init_x86(void* c, void* avctx){}")
     list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_me_cmp_init_mips(void* c, void* avctx){}")
 
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_llvidencdsp_init_x86(void* c){}")
+
+    list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_pngdsp_init_x86(void* dsp);{}")
+
 
     #if not CONFIG_MPEGVIDEO
     list(APPEND AVCODEC_EMPTY_FUNCTIONS "void ff_print_debug_info2(void* avctx, void* pict, void* mbskip_table, int* mbtype_table, int* qscale_table, int (*motion_val[2])[2], int* low_delay, int mb_width, int mb_height, int mb_stride, int quarter_sample){}")
@@ -183,7 +195,7 @@ endif()
 add_library(avcodec OBJECT ${AVCODEC_SOURCES} ${AVCODEC_REGISTERED_CODECS_SOURCES})
 target_include_directories(avcodec PUBLIC ${CMAKE_BINARY_DIR}/include/)
 target_include_directories(avcodec PRIVATE ${CMAKE_BINARY_DIR}/generated/)
-
+target_link_libraries(avcodec PRIVATE avcodec_external_libraries)
 if(MSVC)
     message(WARNING "AVCODEC: adding empty_functions.c hack for unoptimised MSVC")
     target_sources(avcodec PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c)

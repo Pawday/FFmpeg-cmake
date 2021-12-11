@@ -85,6 +85,7 @@ list(APPEND AVUTIL_ALL_HEADERS replaygain.h)
 list(APPEND AVUTIL_ALL_HEADERS spherical.h)
 list(APPEND AVUTIL_ALL_HEADERS cpu_internal.h)
 list(APPEND AVUTIL_ALL_HEADERS slicethread.h)
+list(APPEND AVUTIL_ALL_HEADERS time_internal.h)
 
 foreach(AVUTIL_HEADER ${AVUTIL_ALL_HEADERS})
     file(COPY ${AVUTIL_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libavutil/)

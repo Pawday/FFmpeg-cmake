@@ -83,6 +83,9 @@ target_compile_definitions(ffmpeg_config INTERFACE CONFIG_H264_VIDEOTOOLBOX_HWAC
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_H264_VDPAU_HWACCEL=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_NETWORK=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_XVMC=0)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_FORMAT_FILTER=1)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_PNG_DECODER=1)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_APNG_DECODER=0)
 
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_AVUTIL=1)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_AVCODEC=1)
@@ -92,6 +95,10 @@ target_compile_definitions(ffmpeg_config INTERFACE CONFIG_SWSCALE=1)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_SWRESAMPLE=1)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_POSTPROC=1)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_AVFILTER=1)
+
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE2_MUXER=1)
+
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_FILE_PROTOCOL=1)
 
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_ZLIB=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_SWSCALE_ALPHA=0)
