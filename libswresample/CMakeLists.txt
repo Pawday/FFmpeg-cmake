@@ -7,7 +7,7 @@ list(APPEND SWRESAMLE_ALL_HEADERS swresample.h)
 list(APPEND SWRESAMLE_ALL_HEADERS version.h)
 
 foreach(SWRESAMLE_HEADER ${SWRESAMLE_ALL_HEADERS})
-    file(COPY ${SWRESAMLE_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libswresample/)
+    file(COPY ${SWRESAMLE_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libswresample/)
 endforeach()
 
 list(APPEND SWRESAMLE_SOURCES swresample.c)
@@ -54,6 +54,9 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 add_library(swresample OBJECT ${SWRESAMLE_SOURCES})
+target_include_directories(swresample PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
+
+
 add_library(swresample_static STATIC $<TARGET_OBJECTS:swresample>)
 
 if(MSVC)

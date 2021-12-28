@@ -6,7 +6,7 @@ list(APPEND AVDEVICE_ALL_HEADERS avdevice.h)
 list(APPEND AVDEVICE_ALL_HEADERS version.h)
 
 foreach(AVDEVICE_HEADER ${AVDEVICE_ALL_HEADERS})
-    file(COPY ${AVDEVICE_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libavdevice)
+    file(COPY ${AVDEVICE_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavdevice)
 endforeach()
 
 list(APPEND AVDEVICE_SOURCES avdevice.c)
@@ -27,7 +27,7 @@ endforeach()
 string(APPEND INPUT_DEVICE_C_FILE_CONTENT "NULL\n")
 string(APPEND INPUT_DEVICE_C_FILE_CONTENT "}\;")
 
-file(WRITE ${CMAKE_BINARY_DIR}/generated/libavdevice/indev_list.c ${INPUT_DEVICE_C_FILE_CONTENT})
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavdevice/indev_list.c ${INPUT_DEVICE_C_FILE_CONTENT})
 
 #generating outdev_list.c
 
@@ -43,14 +43,16 @@ endforeach()
 string(APPEND OUTPUT_DEVICE_C_FILE_CONTENT "NULL\n")
 string(APPEND OUTPUT_DEVICE_C_FILE_CONTENT "}\;")
 
-file(WRITE ${CMAKE_BINARY_DIR}/generated/libavdevice/outdev_list.c ${OUTPUT_DEVICE_C_FILE_CONTENT})
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavdevice/outdev_list.c ${OUTPUT_DEVICE_C_FILE_CONTENT})
 
 add_library(avdevice OBJECT ${AVDEVICE_SOURCES})
+target_include_directories(avdevice PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
 
 target_link_libraries(avdevice PRIVATE ffmpeg_config)
 target_link_libraries(avdevice PRIVATE avutil)
+target_link_libraries(avdevice PRIVATE avcodec)
 target_link_libraries(avdevice PRIVATE avformat)
 
-target_include_directories(avdevice PRIVATE ${CMAKE_BINARY_DIR}/generated/)
+target_include_directories(avdevice PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated/)
 
 add_library(avdevice_static STATIC $<TARGET_OBJECTS:avdevice>)

@@ -4,12 +4,12 @@ project(avutil)
 #TODO: when install will come, generate ffversion.h and avconfig.h only for install
 
 #GENERATING ffversion.h
-file(WRITE ${CMAKE_BINARY_DIR}/include/libavutil/ffversion.h "//configured via cmake\n")
-file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/ffversion.h "")
-file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/ffversion.h "#ifndef AVUTIL_FFVERSION_H\n")
-file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/ffversion.h "#define AVUTIL_FFVERSION_H\n")
-file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/ffversion.h "#define FFMPEG_VERSION \"TODO\"\n") #TODO set FFMPEG_VERSION
-file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/ffversion.h "#endif")
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "//configured via cmake\n")
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "")
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#ifndef AVUTIL_FFVERSION_H\n")
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#define AVUTIL_FFVERSION_H\n")
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#define FFMPEG_VERSION \"TODO\"\n") #TODO set FFMPEG_VERSION
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#endif")
 
 
 include (TestBigEndian)
@@ -21,12 +21,12 @@ else()
 endif()
 
 #GENERATING avconfig.h
-file(WRITE ${CMAKE_BINARY_DIR}/include/libavutil/avconfig.h "//configured via cmake\n")
-file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/avconfig.h "#ifndef AVUTIL_AVCONFIG_H\n")
-file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/avconfig.h "#define AVUTIL_AVCONFIG_H\n")
-file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/avconfig.h "#define AV_HAVE_BIGENDIAN ${AV_HAVE_BIGENDIAN_DEF}\n")
-file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/avconfig.h "#define AV_HAVE_FAST_UNALIGNED 0\n")
-file(APPEND ${CMAKE_BINARY_DIR}/include/libavutil/avconfig.h "#endif \n")
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "//configured via cmake\n")
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#ifndef AVUTIL_AVCONFIG_H\n")
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#define AVUTIL_AVCONFIG_H\n")
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#define AV_HAVE_BIGENDIAN ${AV_HAVE_BIGENDIAN_DEF}\n")
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#define AV_HAVE_FAST_UNALIGNED 0\n")
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#endif \n")
 
 
 list(APPEND AVUTIL_ALL_HEADERS samplefmt.h)
@@ -88,13 +88,9 @@ list(APPEND AVUTIL_ALL_HEADERS slicethread.h)
 list(APPEND AVUTIL_ALL_HEADERS time_internal.h)
 
 foreach(AVUTIL_HEADER ${AVUTIL_ALL_HEADERS})
-    file(COPY ${AVUTIL_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libavutil/)
+    file(COPY ${AVUTIL_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/)
 endforeach()
 
-#swscale library required it ""!BECAUSE!""
-add_subdirectory(ppc)
-add_subdirectory(x86)
-add_subdirectory(aarch64)
 
 list(APPEND AVUTIL_SOURCES samplefmt.c)
 list(APPEND AVUTIL_SOURCES utils.c)
@@ -182,11 +178,36 @@ endif()
 
 add_library(avutil_static STATIC $<TARGET_OBJECTS:avutil>)
 
+target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
+
+#TODO: -------------------------Diego's includes--------------------------------
+#swscale library required it ""!BECAUSE!""
+add_subdirectory(ppc)
+add_subdirectory(x86)
+add_subdirectory(aarch64)
+
+#   At commit ea7ee4b4e381e0fa731458de0cbf740430eeb013
+#   Diego Biurrun does include libavutil/ppc/util_altivec.h file into swscale_internal.h
+#   without #ifdef HAVE_ALTIVEC ... #endif
+#   now you have to include platform specific file
+#   THANK YOU Diego
+target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/ppc/include)
+
+#   At commit e0c6cce44729d94e2a5507a4b6d031f23e8bd7b6
+#   Diego Biurrun does include libavutil/x86/asm.h and libavutil/x86/cpu.h file into libswscale/utils.c
+#   without #ifdef ARCH_X86_64 ... #endif
+#   now you have to include platform specific file
+#   THANK YOU Diego
+target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/x86/include)
+
+#   At commit 70ab2778be9c83dab84340af7e3ba83fa0f98576
+target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/aarch64/include)
+
+
 target_link_libraries(avutil PRIVATE ffmpeg_config)
 
 target_compile_definitions(avutil PRIVATE emms_c)
 
-target_include_directories(avutil PUBLIC ${CMAKE_BINARY_DIR}/include/)
 target_compile_definitions(avutil PRIVATE HAVE_AV_CONFIG_H)
 
 if (UNIX)

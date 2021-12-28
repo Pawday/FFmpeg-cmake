@@ -28,7 +28,7 @@ list(APPEND AVCODEC_ALL_HEADERS vlc.h)
 list(APPEND AVCODEC_ALL_HEADERS golomb.h)
 
 foreach(AVCODEC_HEADER ${AVCODEC_ALL_HEADERS})
-    file(COPY ${AVCODEC_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libavcodec)
+    file(COPY ${AVCODEC_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavcodec)
 endforeach()
 
 list(APPEND AVCODEC_SOURCES avcodec.c)
@@ -81,12 +81,13 @@ endforeach()
 string(APPEND CODEC_LIST_C_FILE_CONTENT "NULL\n")
 string(APPEND CODEC_LIST_C_FILE_CONTENT "}\;")
 
-file(WRITE ${CMAKE_BINARY_DIR}/generated/libavcodec/codec_list.c ${CODEC_LIST_C_FILE_CONTENT})
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavcodec/codec_list.c ${CODEC_LIST_C_FILE_CONTENT})
 
 #creating parser_list.c
 
 list(APPEND AVCODEC_REGISTERED_PARSERS_IDS ff_h264_parser)
 list(APPEND AVCODEC_REGISTERED_PARSERS_IDS ff_bmp_parser)
+list(APPEND AVCODEC_REGISTERED_PARSERS_IDS ff_png_parser)
 
 set(PARSER_LIST_C_FILE_CONTENT)
 string(APPEND PARSER_LIST_C_FILE_CONTENT "static const AVCodecParser * const parser_list[] = {\n")
@@ -98,7 +99,7 @@ endforeach()
 string(APPEND PARSER_LIST_C_FILE_CONTENT "NULL\n")
 string(APPEND PARSER_LIST_C_FILE_CONTENT "}\;")
 
-file(WRITE ${CMAKE_BINARY_DIR}/generated/libavcodec/parser_list.c ${PARSER_LIST_C_FILE_CONTENT})
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavcodec/parser_list.c ${PARSER_LIST_C_FILE_CONTENT})
 
 #BSF_LIST
 #list(APPEND AVCODEC_REGISTERED_BIT_STREAM_FILTERS )
@@ -113,7 +114,7 @@ endforeach()
 string(APPEND BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT "NULL\n")
 string(APPEND BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT "}\;")
 
-file(WRITE ${CMAKE_BINARY_DIR}/generated/libavcodec/bsf_list.c ${BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT})
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavcodec/bsf_list.c ${BIT_STREAM_FILTERS_LIST_C_FILE_CONTENT})
 
 
 
@@ -193,9 +194,11 @@ endif()
 
 
 add_library(avcodec OBJECT ${AVCODEC_SOURCES} ${AVCODEC_REGISTERED_CODECS_SOURCES})
-target_include_directories(avcodec PUBLIC ${CMAKE_BINARY_DIR}/include/)
-target_include_directories(avcodec PRIVATE ${CMAKE_BINARY_DIR}/generated/)
+target_include_directories(avcodec PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
+target_include_directories(avcodec PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated/)
+
 target_link_libraries(avcodec PRIVATE avcodec_external_libraries)
+
 if(MSVC)
     message(WARNING "AVCODEC: adding empty_functions.c hack for unoptimised MSVC")
     target_sources(avcodec PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c)
@@ -208,6 +211,7 @@ endif()
 target_compile_definitions(avcodec PRIVATE attribute_align_arg=)
 
 target_link_libraries(avcodec PRIVATE ffmpeg_config)
+target_link_libraries(avcodec PUBLIC avutil)
 
 add_library(avcodec_static STATIC $<TARGET_OBJECTS:avcodec>)
 

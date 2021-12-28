@@ -8,7 +8,7 @@ list(APPEND AVFILTER_ALL_HEADERS buffersink.h)
 list(APPEND AVFILTER_ALL_HEADERS version.h)
 
 foreach(AVFILTER_HEADER ${AVFILTER_ALL_HEADERS})
-    file(COPY ${AVFILTER_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libavfilter/)
+    file(COPY ${AVFILTER_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavfilter/)
 endforeach()
 
 list(APPEND AVFILTER_SOURCES avfilter.c)
@@ -57,6 +57,7 @@ string(APPEND FILTER_LIST_C_FILE_CONTENT "}\;")
 file(WRITE ${CMAKE_BINARY_DIR}/generated/libavfilter/filter_list.c ${FILTER_LIST_C_FILE_CONTENT})
 
 add_library(avfilter OBJECT ${AVFILTER_SOURCES})
+target_include_directories(avfilter PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
 
 if (AVFILTER_REGISTERED_FILTERS_SOURCES)
     target_sources(avfilter PRIVATE ${AVFILTER_REGISTERED_FILTERS_SOURCES})
@@ -67,4 +68,6 @@ target_link_libraries(avfilter PRIVATE avutil)
 target_include_directories(avfilter PRIVATE ${CMAKE_BINARY_DIR}/generated/)
 
 target_link_libraries(avfilter PRIVATE ffmpeg_config)
+target_link_libraries(avfilter PRIVATE swscale)
+
 add_library(avfilter_static STATIC $<TARGET_OBJECTS:avfilter>)

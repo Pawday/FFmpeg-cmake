@@ -123,7 +123,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     add_compile_options("/w") #TODO set it for all targets individually or remove for WARNING HELL
 endif()
 
-file(WRITE ${CMAKE_BINARY_DIR}/include/config.h "//cmake config will define all that")
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/include/config.h "//cmake config will define all that")
+target_include_directories(ffmpeg_config INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 add_subdirectory(compat)
 add_subdirectory(libavutil)

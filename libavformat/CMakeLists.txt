@@ -12,7 +12,7 @@ list(APPEND AVFORMAT_ALL_HEADERS os_support.h)
 
 
 foreach(AVFORMAT_HEADER ${AVFORMAT_ALL_HEADERS})
-    file(COPY ${AVFORMAT_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libavformat)
+    file(COPY ${AVFORMAT_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavformat)
 endforeach()
 
 list(APPEND AVFORMAT_SOURCES utils.c)
@@ -55,7 +55,7 @@ endforeach()
 string(APPEND MUXER_LIST_C_FILE_CONTENT "NULL\n")
 string(APPEND MUXER_LIST_C_FILE_CONTENT "}\;")
 
-file(WRITE ${CMAKE_BINARY_DIR}/generated/libavformat/muxer_list.c ${MUXER_LIST_C_FILE_CONTENT})
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavformat/muxer_list.c ${MUXER_LIST_C_FILE_CONTENT})
 
 #generating demuxer_list.c
 
@@ -71,7 +71,7 @@ endforeach()
 string(APPEND DEMUXER_LIST_C_FILE_CONTENT "NULL\n")
 string(APPEND DEMUXER_LIST_C_FILE_CONTENT "}\;")
 
-file(WRITE ${CMAKE_BINARY_DIR}/generated/libavformat/demuxer_list.c ${DEMUXER_LIST_C_FILE_CONTENT})
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavformat/demuxer_list.c ${DEMUXER_LIST_C_FILE_CONTENT})
 
 
 #generating protocol_list.c
@@ -92,10 +92,12 @@ endforeach()
 string(APPEND PROTOCOL_LIST_C_FILE_CONTENT "NULL\n")
 string(APPEND PROTOCOL_LIST_C_FILE_CONTENT "}\;")
 
-file(WRITE ${CMAKE_BINARY_DIR}/generated/libavformat/protocol_list.c ${PROTOCOL_LIST_C_FILE_CONTENT})
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavformat/protocol_list.c ${PROTOCOL_LIST_C_FILE_CONTENT})
 
 
 add_library(avformat OBJECT ${AVFORMAT_SOURCES})
+target_include_directories(avformat PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
+target_include_directories(avformat PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated/)
 
 if (AVFORMAT_REGISTERED_PROTOCOLS_SOURCES)
     target_sources(avformat PRIVATE ${AVFORMAT_REGISTERED_PROTOCOLS_SOURCES})
@@ -106,9 +108,8 @@ endif ()
 
 add_library(avformat_static STATIC $<TARGET_OBJECTS:avformat>)
 
-target_include_directories(avformat PRIVATE ${CMAKE_BINARY_DIR}/generated/)
+
 
 target_link_libraries(avformat PRIVATE avutil)
+target_link_libraries(avformat PRIVATE avcodec)
 target_link_libraries(avformat PRIVATE ffmpeg_config)
-
-target_include_directories(avformat PUBLIC ${CMAKE_BINARY_DIR}/include/)

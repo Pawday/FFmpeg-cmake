@@ -6,7 +6,7 @@ list(APPEND SWSCALE_ALL_HEADERS version.h)
 list(APPEND SWSCALE_ALL_HEADERS swscale.h)
 
 foreach(SWSCALE_HEADER ${SWSCALE_ALL_HEADERS})
-    file(COPY ${SWSCALE_HEADER} DESTINATION ${CMAKE_BINARY_DIR}/include/libswscale/)
+    file(COPY ${SWSCALE_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libswscale/)
 endforeach()
 
 list(APPEND SWSCALE_SOURCES swscale.c)
@@ -64,13 +64,14 @@ endif()
 
 
 add_library(swscale OBJECT ${SWSCALE_SOURCES})
+target_include_directories(swscale PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 add_library(swscale_static STATIC $<TARGET_OBJECTS:swscale>)
+
+target_link_libraries(swscale PRIVATE ffmpeg_config)
+target_link_libraries(swscale PRIVATE avutil)
 
 if(MSVC)
     message(WARNING "SWSCALE: adding empty_functions.c hack for unoptimised MSVC")
     target_sources(swscale PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c)
 endif()
-
-target_link_libraries(swscale PRIVATE ffmpeg_config)
-target_link_libraries(swscale PRIVATE avutil)
