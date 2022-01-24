@@ -31,6 +31,7 @@ list(APPEND AVFORMAT_SOURCES dump.c)
 list(APPEND AVFORMAT_SOURCES sdp.c)
 list(APPEND AVFORMAT_SOURCES seek.c)
 list(APPEND AVFORMAT_SOURCES rawdec.c)
+list(APPEND AVFORMAT_SOURCES to_upper4.c)
 
 #set(APPEND AVFORMAT_REGISTERED_PROTOCOLS_SOURCES "") #its filled by each <protoname>_proto cmake script
 

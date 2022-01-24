@@ -51,9 +51,6 @@ target_compile_definitions(ffmpeg_config INTERFACE HAVE_TRUNCF=1)
 
 
 
-target_compile_definitions(ffmpeg_config INTERFACE ARCH_X86_32=0)
-target_compile_definitions(ffmpeg_config INTERFACE ARCH_X86_64=0)
-
 target_link_libraries(ffmpeg_config INTERFACE ffmpeg_compat)
 
 include (TestBigEndian)
@@ -73,7 +70,7 @@ target_compile_definitions(ffmpeg_config INTERFACE CONFIG_FRAME_THREAD_ENCODER=0
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_MEMORY_POISONING=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_GRAY=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_ERROR_RESILIENCE=0)
-target_compile_definitions(ffmpeg_config INTERFACE CONFIG_MPEGVIDEO=0)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_MPEGVIDEODEC=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_SMALL=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_H264_D3D11VA_HWACCEL=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_H264_DXVA2_HWACCEL=0)
@@ -103,24 +100,34 @@ target_compile_definitions(ffmpeg_config INTERFACE CONFIG_FILE_PROTOCOL=1)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_ZLIB=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_SWSCALE_ALPHA=0)
 
+target_compile_definitions(ffmpeg_config INTERFACE ARCH_X86_32=0)
+target_compile_definitions(ffmpeg_config INTERFACE ARCH_X86_64=0)
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_AARCH64=0)
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_ARM=0)
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_PPC=0)
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_X86=0)
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_MIPS=0)
 target_compile_definitions(ffmpeg_config INTERFACE ARCH_ALPHA=0)
+target_compile_definitions(ffmpeg_config INTERFACE ARCH_LOONGARCH=0)
+target_compile_definitions(ffmpeg_config INTERFACE ARCH_LOONGARCH64=0)
 
 target_compile_definitions(ffmpeg_config INTERFACE SWS_MAX_FILTER_SIZE=256)
 
+#_________________________WARNINGS__________________________________________
+#TODO set it for all targets individually or remove for WARNING HELL
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    add_compile_options("-w") #TODO set it for all targets individually or remove for WARNING HELL
+    add_compile_options("-w")
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options("-w")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     cmake_policy(SET CMP0092 NEW) #cmake disable std MSVC warnings in CMAKE_C_FLAGS
     #CMAKE_DEPFILE_FLAGS_C var in windows contains only /showIncludes and produce include tree
     set(CMAKE_DEPFILE_FLAGS_C "") #erase it
-    add_compile_options("/w") #TODO set it for all targets individually or remove for WARNING HELL
+    add_compile_options("/w")
 endif()
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/include/config.h "//cmake config will define all that")

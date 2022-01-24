@@ -147,18 +147,20 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 
     #TODO: make it config depended
 
-    #if not ARCH_AARCH64 ARCH_ARM ARCH_PPC ARCH_X86 ARCH_MIPS ARCH_ALPHA
+    #if not ARCH_AARCH64 ARCH_ARM ARCH_PPC ARCH_X86 ARCH_MIPS ARCH_ALPHA ARCH_LOONGARCH ARCH_LOONGARCH64
     list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_mips(void){return 0\;}")
     list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_aarch64(void){return 0\;}")
     list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_arm(void){return 0\;}")
     list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_ppc(void){return 0\;}")
     list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_x86(void){return 0\;}")
+    list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_loongarch(void){return 0\;}")
 
     list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_mips(void){return 0\;}")
     list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_aarch64(void){return 0\;}")
     list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_arm(void){return 0\;}")
     list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_ppc(void){return 0\;}")
     list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_x86(void){return 0\;}")
+    list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_loongarch(void){return 0\;}")
 
     foreach(CONTENT ${AVUTIL_EMPTY_FUNCTIONS})
         string(APPEND AVUTIL_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "${CONTENT}\n")
@@ -176,7 +178,6 @@ if(MSVC)
 endif()
 
 
-add_library(avutil_static STATIC $<TARGET_OBJECTS:avutil>)
 
 target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
 
@@ -209,6 +210,9 @@ target_link_libraries(avutil PRIVATE ffmpeg_config)
 target_compile_definitions(avutil PRIVATE emms_c)
 
 target_compile_definitions(avutil PRIVATE HAVE_AV_CONFIG_H)
+
+add_library(avutil_static STATIC $<TARGET_OBJECTS:avutil>)
+target_include_directories(avutil_static PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
 
 if (UNIX)
     #on unix we need manually link with math library
