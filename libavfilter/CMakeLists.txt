@@ -54,7 +54,7 @@ endforeach()
 string(APPEND FILTER_LIST_C_FILE_CONTENT "NULL\n")
 string(APPEND FILTER_LIST_C_FILE_CONTENT "}\;")
 
-file(WRITE ${CMAKE_BINARY_DIR}/generated/libavfilter/filter_list.c ${FILTER_LIST_C_FILE_CONTENT})
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavfilter/filter_list.c ${FILTER_LIST_C_FILE_CONTENT})
 
 add_library(avfilter OBJECT ${AVFILTER_SOURCES})
 target_include_directories(avfilter PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
@@ -65,7 +65,7 @@ endif ()
 
 target_link_libraries(avfilter PRIVATE avutil)
 
-target_include_directories(avfilter PRIVATE ${CMAKE_BINARY_DIR}/generated/)
+target_include_directories(avfilter PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated/)
 
 target_link_libraries(avfilter PRIVATE ffmpeg_config)
 target_link_libraries(avfilter PRIVATE swscale)

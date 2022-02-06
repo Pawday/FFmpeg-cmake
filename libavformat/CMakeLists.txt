@@ -32,6 +32,7 @@ list(APPEND AVFORMAT_SOURCES sdp.c)
 list(APPEND AVFORMAT_SOURCES seek.c)
 list(APPEND AVFORMAT_SOURCES rawdec.c)
 list(APPEND AVFORMAT_SOURCES to_upper4.c)
+list(APPEND AVFORMAT_SOURCES rawenc.c)
 
 #set(APPEND AVFORMAT_REGISTERED_PROTOCOLS_SOURCES "") #its filled by each <protoname>_proto cmake script
 
@@ -103,6 +104,7 @@ target_include_directories(avformat PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generate
 if (AVFORMAT_REGISTERED_PROTOCOLS_SOURCES)
     target_sources(avformat PRIVATE ${AVFORMAT_REGISTERED_PROTOCOLS_SOURCES})
 endif ()
+
 if (AVFORMAT_REGISTERED_FORMATS_SOURCES)
     target_sources(avformat PRIVATE ${AVFORMAT_REGISTERED_FORMATS_SOURCES})
 endif ()
@@ -111,6 +113,6 @@ add_library(avformat_static STATIC $<TARGET_OBJECTS:avformat>)
 
 
 
+target_link_libraries(avformat PRIVATE ffmpeg_config)
 target_link_libraries(avformat PRIVATE avutil)
 target_link_libraries(avformat PRIVATE avcodec)
-target_link_libraries(avformat PRIVATE ffmpeg_config)
