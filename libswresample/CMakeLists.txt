@@ -3,8 +3,10 @@ cmake_minimum_required(VERSION 3.15)
 project(SWRESAMPLE)
 
 
-list(APPEND SWRESAMLE_ALL_HEADERS swresample.h)
 list(APPEND SWRESAMLE_ALL_HEADERS version.h)
+list(APPEND SWRESAMLE_ALL_HEADERS version_major.h)
+
+list(APPEND SWRESAMLE_ALL_HEADERS swresample.h)
 
 foreach(SWRESAMLE_HEADER ${SWRESAMLE_ALL_HEADERS})
     file(COPY ${SWRESAMLE_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libswresample/)
@@ -30,7 +32,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     string(APPEND SWRESAMPLE_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "#include \"libavutil/samplefmt.h\"\n")
 
 
-    #TODO: make it config depended
+    #TODO[cmake]: make it config depended
 
     #if not HAVE_X86ASM, HAVE_MMX,
     list(APPEND SWRESAMPLE_EMPTY_FUNCTIONS "void swri_audio_convert_init_aarch64(void* ac, enum AVSampleFormat out_fmt, enum AVSampleFormat in_fmt, int channels){}")

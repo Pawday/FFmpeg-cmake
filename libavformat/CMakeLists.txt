@@ -2,8 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 
 project(avformat)
 
-list(APPEND AVFORMAT_ALL_HEADERS avformat.h)
 list(APPEND AVFORMAT_ALL_HEADERS version.h)
+list(APPEND AVFORMAT_ALL_HEADERS version_major.h)
+
+list(APPEND AVFORMAT_ALL_HEADERS avformat.h)
 list(APPEND AVFORMAT_ALL_HEADERS avio.h)
 list(APPEND AVFORMAT_ALL_HEADERS internal.h)
 list(APPEND AVFORMAT_ALL_HEADERS id3v2.h)
@@ -39,7 +41,7 @@ list(APPEND AVFORMAT_SOURCES rawenc.c)
 #set(APPEND AVFORMAT_REGISTERED_FORMATS_SOURCES "") #its filled by each  <formatname>_format cmake
 
 
-#TODO: register all muxers and demuxers
+#TODO[cmake]: register all muxers and demuxers
 
 include(h264raw_format.cmake)
 include(img2_format.cmake)

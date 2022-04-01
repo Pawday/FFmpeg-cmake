@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.15)
 project(avutil)
 
-#TODO: when install will come, generate ffversion.h and avconfig.h only for install
+#TODO[cmake]: when install will come, generate ffversion.h and avconfig.h only for install
 
 #GENERATING ffversion.h
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "//configured via cmake\n")
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "")
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#ifndef AVUTIL_FFVERSION_H\n")
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#define AVUTIL_FFVERSION_H\n")
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#define FFMPEG_VERSION \"TODO\"\n") #TODO set FFMPEG_VERSION
+file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#define FFMPEG_VERSION \"TODO\"\n") #TODO[cmake] set FFMPEG_VERSION
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#endif")
 
 
@@ -27,6 +27,9 @@ file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#define AV
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#define AV_HAVE_BIGENDIAN ${AV_HAVE_BIGENDIAN_DEF}\n")
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#define AV_HAVE_FAST_UNALIGNED 0\n")
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#endif \n")
+
+list(APPEND AVUTIL_ALL_HEADERS version.h)
+list(APPEND AVUTIL_ALL_HEADERS version_major.h)
 
 
 list(APPEND AVUTIL_ALL_HEADERS samplefmt.h)
@@ -48,7 +51,6 @@ list(APPEND AVUTIL_ALL_HEADERS opt.h)
 list(APPEND AVUTIL_ALL_HEADERS thread.h)
 list(APPEND AVUTIL_ALL_HEADERS common.h)
 list(APPEND AVUTIL_ALL_HEADERS macros.h)
-list(APPEND AVUTIL_ALL_HEADERS version.h)
 list(APPEND AVUTIL_ALL_HEADERS error.h)
 list(APPEND AVUTIL_ALL_HEADERS mathematics.h)
 list(APPEND AVUTIL_ALL_HEADERS intfloat.h)
@@ -135,6 +137,7 @@ list(APPEND AVUTIL_SOURCES dovi_meta.c)
 list(APPEND AVUTIL_SOURCES spherical.c)
 list(APPEND AVUTIL_SOURCES file_open.c)
 list(APPEND AVUTIL_SOURCES slicethread.c)
+list(APPEND AVUTIL_SOURCES avsscanf.c)
 
 
 
@@ -145,7 +148,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 
     string(APPEND AVUTIL_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "//THIS FILE IS PART OF EVIL HACK FOR UNOPTIMISED COMPILERS WHEN THAT FUNCTIONS ARE NOT BUILDING BECAUSE CONFIGS\n")
 
-    #TODO: make it config depended
+    #TODO[cmake]: make it config depended
 
     #if not ARCH_AARCH64 ARCH_ARM ARCH_PPC ARCH_X86 ARCH_MIPS ARCH_ALPHA ARCH_LOONGARCH ARCH_LOONGARCH64
     list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_mips(void){return 0\;}")
@@ -181,7 +184,7 @@ endif()
 
 target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
 
-#TODO: -------------------------Diego's includes--------------------------------
+#TODO[cmake]: -------------------------Diego's includes--------------------------------
 #swscale library required it ""!BECAUSE!""
 add_subdirectory(ppc)
 add_subdirectory(x86)

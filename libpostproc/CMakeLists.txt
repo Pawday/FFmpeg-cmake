@@ -2,8 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 
 project(POSTPROC)
 
-list(APPEND POSTPROC_ALL_HEADERS postprocess.h)
 list(APPEND POSTPROC_ALL_HEADERS version.h)
+list(APPEND POSTPROC_ALL_HEADERS version_major.h)
+
+list(APPEND POSTPROC_ALL_HEADERS postprocess.h)
 
 foreach(POSTPROC_HEADER ${POSTPROC_ALL_HEADERS})
     file(COPY ${POSTPROC_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libpostproc/)

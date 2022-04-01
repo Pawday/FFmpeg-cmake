@@ -2,10 +2,12 @@ cmake_minimum_required(VERSION 3.15)
 
 project(AVFILTER)
 
+list(APPEND AVFILTER_ALL_HEADERS version.h)
+list(APPEND AVFILTER_ALL_HEADERS version_major.h)
+
 list(APPEND AVFILTER_ALL_HEADERS avfilter.h)
 list(APPEND AVFILTER_ALL_HEADERS buffersrc.h)
 list(APPEND AVFILTER_ALL_HEADERS buffersink.h)
-list(APPEND AVFILTER_ALL_HEADERS version.h)
 
 foreach(AVFILTER_HEADER ${AVFILTER_ALL_HEADERS})
     file(COPY ${AVFILTER_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavfilter/)
@@ -31,7 +33,7 @@ list(APPEND AVFILTER_SOURCES graphparser.c)
 
 
 #generating filter_list.c
-#TODO: register all available filters
+#TODO[cmake]: register all available filters
 #list(APPEND AVFILTER_REGISTERED_FILTERS_IDS filterid)
 
 

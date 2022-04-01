@@ -3,15 +3,16 @@ project(avcodec)
 
 add_library(avcodec_external_libraries INTERFACE) #["zlib (pngcodec)"]
 
-list(APPEND AVCODEC_ALL_HEADERS avcodec.h)
 list(APPEND AVCODEC_ALL_HEADERS version.h)
+list(APPEND AVCODEC_ALL_HEADERS version_major.h)
+
+list(APPEND AVCODEC_ALL_HEADERS avcodec.h)
 list(APPEND AVCODEC_ALL_HEADERS codec.h)
 list(APPEND AVCODEC_ALL_HEADERS codec_desc.h)
 list(APPEND AVCODEC_ALL_HEADERS codec_par.h)
 list(APPEND AVCODEC_ALL_HEADERS codec_id.h)
 list(APPEND AVCODEC_ALL_HEADERS defs.h)
 list(APPEND AVCODEC_ALL_HEADERS packet.h)
-list(APPEND AVCODEC_ALL_HEADERS version.h)
 list(APPEND AVCODEC_ALL_HEADERS bsf.h)
 list(APPEND AVCODEC_ALL_HEADERS bytestream.h)
 list(APPEND AVCODEC_ALL_HEADERS internal.h)
@@ -30,6 +31,7 @@ list(APPEND AVCODEC_ALL_HEADERS to_upper4.h)
 list(APPEND AVCODEC_ALL_HEADERS gif.h)
 list(APPEND AVCODEC_ALL_HEADERS mjpeg.h)
 list(APPEND AVCODEC_ALL_HEADERS xwd.h)
+list(APPEND AVCODEC_ALL_HEADERS zlib_wrapper.h)
 
 foreach(AVCODEC_HEADER ${AVCODEC_ALL_HEADERS})
     file(COPY ${AVCODEC_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavcodec)
@@ -59,6 +61,8 @@ list(APPEND AVCODEC_SOURCES startcode.c)
 list(APPEND AVCODEC_SOURCES raw.c)
 list(APPEND AVCODEC_SOURCES xiph.c)
 list(APPEND AVCODEC_SOURCES golomb.c)
+list(APPEND AVCODEC_SOURCES vlc.c)
+list(APPEND AVCODEC_SOURCES zlib_wrapper.c)
 
 
 
@@ -76,7 +80,7 @@ include(bmp.cmake)
 include(png.cmake)
 
 set(CODEC_LIST_C_FILE_CONTENT)
-string(APPEND CODEC_LIST_C_FILE_CONTENT "static const AVCodec * const codec_list[] = {\n")
+string(APPEND CODEC_LIST_C_FILE_CONTENT "static const FFCodec * const codec_list[] = {\n")
 
 foreach(AVCODEC_NAME ${AVCODEC_REGISTERED_CODECS_IDS})
     string(APPEND CODEC_LIST_C_FILE_CONTENT "&${AVCODEC_NAME},\n")
@@ -130,7 +134,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 
     string(APPEND AVCODEC_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "//THIS FILE IS PART OF EVIL HACK FOR UNOPTIMISED COMPILERS WHEN THAT FUNCTIONS ARE NOT BUILDING BECAUSE CONFIGS\n")
 
-    #TODO: make it config depended
+    #TODO[cmake]: make it config depended
 
     #if not CONFIG_FRAME_THREAD_ENCODER,HAVE_THREADS,
     list(APPEND AVCODEC_EMPTY_FUNCTIONS "int ff_frame_thread_encoder_init(void* avctx){return 234\;}")
@@ -214,7 +218,7 @@ if(MSVC)
 endif()
 
 
-#TODO: avcodec.c attribute_align_arg
+#TODO[cmake]: avcodec.c attribute_align_arg
 #only avcodec_open2 function in avcodec.c require this deco, it is located in libavutils/internal.h but avcodec.c does not include it
 #ffmpeg is madness inside OMG
 target_compile_definitions(avcodec PRIVATE attribute_align_arg=)

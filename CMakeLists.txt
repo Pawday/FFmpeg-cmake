@@ -4,7 +4,8 @@ project(FFMPEG)
 
 add_library(ffmpeg_config INTERFACE)
 
-#TODO: config all that properly
+#TODO:[cmake] COMMON DEFINES (config.h)
+# create list with all that and then pick required from that list in each target
 target_compile_definitions(ffmpeg_config INTERFACE FFMPEG_CONFIGURATION="")
 target_compile_definitions(ffmpeg_config INTERFACE FFMPEG_DATADIR="")
 target_compile_definitions(ffmpeg_config INTERFACE AVCONV_DATADIR="")
@@ -35,7 +36,7 @@ else()
 endif()
 
 
-#TODO: detect each function and set to 0 if missing (they are in math.h)
+#TODO:[cmake] detect each function and set to 0 if missing (they are in math.h)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_CBRT=1)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_CBRTF=1)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_COPYSIGN=1)
@@ -83,6 +84,8 @@ target_compile_definitions(ffmpeg_config INTERFACE CONFIG_XVMC=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_FORMAT_FILTER=1)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_PNG_DECODER=1)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_APNG_DECODER=0)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_INFLATE_WRAPPER=1)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_DEFLATE_WRAPPER=1)
 
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_AVUTIL=1)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_AVCODEC=1)
@@ -137,6 +140,7 @@ target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_XWD_PIPE_DEMUXER
 
 #CONFIG PROTOCOLS
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_FILE_PROTOCOL=1)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_PIPE_PROTOCOL=1)
 
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_ZLIB=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_SWSCALE_ALPHA=0)
@@ -155,7 +159,7 @@ target_compile_definitions(ffmpeg_config INTERFACE ARCH_LOONGARCH64=0)
 target_compile_definitions(ffmpeg_config INTERFACE SWS_MAX_FILTER_SIZE=256)
 
 #_________________________WARNINGS__________________________________________
-#TODO set it for all targets individually or remove for WARNING HELL
+#TODO[cmake]: set it for all targets individually or remove for WARNING HELL
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     add_compile_options("-w")
 endif()
@@ -172,6 +176,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/include/config.h "//cmake config will define all that")
+target_include_directories(ffmpeg_config INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/include)
+
+#TODO[cmake]: resolve config_components.h
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/include/config_components.h "//")
 target_include_directories(ffmpeg_config INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 add_subdirectory(compat)
