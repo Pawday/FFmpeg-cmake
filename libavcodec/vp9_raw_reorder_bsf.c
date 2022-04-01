@@ -292,6 +292,11 @@ static int vp9_raw_reorder_filter(AVBSFContext *bsf, AVPacket *out)
             return err;
         }
 
+        if (!in->size) {
+            av_packet_free(&in);
+            return AVERROR_INVALIDDATA;
+        }
+
         if ((in->data[in->size - 1] & 0xe0) == 0xc0) {
             av_log(bsf, AV_LOG_ERROR, "Input in superframes is not "
                    "supported.\n");
@@ -408,11 +413,11 @@ static const enum AVCodecID vp9_raw_reorder_codec_ids[] = {
     AV_CODEC_ID_VP9, AV_CODEC_ID_NONE,
 };
 
-const AVBitStreamFilter ff_vp9_raw_reorder_bsf = {
-    .name           = "vp9_raw_reorder",
+const FFBitStreamFilter ff_vp9_raw_reorder_bsf = {
+    .p.name         = "vp9_raw_reorder",
+    .p.codec_ids    = vp9_raw_reorder_codec_ids,
     .priv_data_size = sizeof(VP9RawReorderContext),
     .close          = &vp9_raw_reorder_close,
     .flush          = &vp9_raw_reorder_flush,
     .filter         = &vp9_raw_reorder_filter,
-    .codec_ids      = vp9_raw_reorder_codec_ids,
 };
