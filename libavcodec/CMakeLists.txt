@@ -77,7 +77,8 @@ include(h264.cmake)
 include(bmp.cmake)
 
 #register png
-include(png.cmake)
+#TODO[cmake]: resolve zlib dependencies for png codec
+#include(png.cmake)
 
 set(CODEC_LIST_C_FILE_CONTENT)
 string(APPEND CODEC_LIST_C_FILE_CONTENT "static const FFCodec * const codec_list[] = {\n")
