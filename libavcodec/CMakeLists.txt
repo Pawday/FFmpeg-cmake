@@ -96,7 +96,7 @@ file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavcodec/codec_list.c ${CODEC
 
 list(APPEND AVCODEC_REGISTERED_PARSERS_IDS ff_h264_parser)
 list(APPEND AVCODEC_REGISTERED_PARSERS_IDS ff_bmp_parser)
-list(APPEND AVCODEC_REGISTERED_PARSERS_IDS ff_png_parser)
+#list(APPEND AVCODEC_REGISTERED_PARSERS_IDS ff_png_parser)
 
 set(PARSER_LIST_C_FILE_CONTENT)
 string(APPEND PARSER_LIST_C_FILE_CONTENT "static const AVCodecParser * const parser_list[] = {\n")
