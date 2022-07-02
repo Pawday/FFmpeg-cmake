@@ -176,6 +176,8 @@ typedef struct OptionsContext {
     int        nb_qscale;
     SpecifierOpt *forced_key_frames;
     int        nb_forced_key_frames;
+    SpecifierOpt *fps_mode;
+    int        nb_fps_mode;
     SpecifierOpt *force_fps;
     int        nb_force_fps;
     SpecifierOpt *frame_aspect_ratios;
@@ -456,7 +458,7 @@ typedef struct OutputStream {
     int source_index;        /* InputStream index */
     AVStream *st;            /* stream in the output file */
     int encoding_needed;     /* true if encoding needed for this stream */
-    int frame_number;
+    int64_t frame_number;
     /* input pts and corresponding output pts
        for A/V sync */
     struct InputStream *sync_ist; /* input stream to sync against */
@@ -479,8 +481,8 @@ typedef struct OutputStream {
     AVFrame *filtered_frame;
     AVFrame *last_frame;
     AVPacket *pkt;
-    int last_dropped;
-    int last_nb0_frames[3];
+    int64_t last_dropped;
+    int64_t last_nb0_frames[3];
 
     void  *hwaccel_ctx;
 
@@ -489,6 +491,7 @@ typedef struct OutputStream {
     AVRational max_frame_rate;
     enum VideoSyncMethod vsync_method;
     int is_cfr;
+    const char *fps_mode;
     int force_fps;
     int top_field_first;
     int rotate_overridden;
@@ -536,7 +539,7 @@ typedef struct OutputStream {
     int inputs_done;
 
     const char *attachment_filename;
-    int seen_kf;
+    int streamcopy_started;
     int copy_initial_nonkeyframes;
     int copy_prior_start;
     char *disposition;
@@ -551,6 +554,8 @@ typedef struct OutputStream {
     // number of frames/samples sent to the encoder
     uint64_t frames_encoded;
     uint64_t samples_encoded;
+    // number of packets received from the encoder
+    uint64_t packets_encoded;
 
     /* packet quality factor */
     int quality;
@@ -577,6 +582,10 @@ typedef struct OutputStream {
 } OutputStream;
 
 typedef struct OutputFile {
+    int index;
+
+    const AVOutputFormat *format;
+
     AVFormatContext *ctx;
     AVDictionary *opts;
     int ost_index;       /* index of the first stream in output_streams */
@@ -645,6 +654,10 @@ extern char *qsv_device;
 #endif
 extern HWDevice *filter_hw_device;
 
+extern int want_sdp;
+extern unsigned nb_output_dumped;
+extern int main_return_code;
+
 
 void term_init(void);
 void term_exit(void);
@@ -680,5 +693,13 @@ int hw_device_setup_for_encode(OutputStream *ost);
 int hw_device_setup_for_filter(FilterGraph *fg);
 
 int hwaccel_decode_init(AVCodecContext *avctx);
+
+/* open the muxer when all the streams are initialized */
+int of_check_init(OutputFile *of);
+int of_write_trailer(OutputFile *of);
+void of_close(OutputFile **pof);
+
+void of_write_packet(OutputFile *of, AVPacket *pkt, OutputStream *ost,
+                     int unqueue);
 
 #endif /* FFTOOLS_FFMPEG_H */

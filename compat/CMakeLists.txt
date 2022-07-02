@@ -3,6 +3,7 @@ project(FFMPEG_COMPAT)
 
 list(APPEND FFMPEG_COMPAT_ALL_HEADERS va_copy.h)
 list(APPEND FFMPEG_COMPAT_ALL_HEADERS w32pthreads.h)
+list(APPEND FFMPEG_COMPAT_ALL_HEADERS w32dlfcn.h)
 
 add_library(ffmpeg_compat INTERFACE)
 

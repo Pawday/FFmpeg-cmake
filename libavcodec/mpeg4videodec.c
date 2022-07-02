@@ -3588,7 +3588,7 @@ static av_cold void mpeg4_init_static(void)
                                  0, 0, 528);
 
     for (unsigned i = 0, offset = 0; i < 12; i++) {
-        static VLC_TYPE vlc_buf[6498][2];
+        static VLCElem vlc_buf[6498];
 
         studio_intra_tab[i].table           = &vlc_buf[offset];
         studio_intra_tab[i].table_allocated = FF_ARRAY_ELEMS(vlc_buf) - offset;
@@ -3670,7 +3670,7 @@ const FFCodec ff_mpeg4_decoder = {
     .priv_data_size        = sizeof(Mpeg4DecContext),
     .init                  = decode_init,
     .close                 = ff_h263_decode_end,
-    .decode                = ff_h263_decode_frame,
+    FF_CODEC_DECODE_CB(ff_h263_decode_frame),
     .p.capabilities        = AV_CODEC_CAP_DRAW_HORIZ_BAND | AV_CODEC_CAP_DR1 |
 #if FF_API_FLAG_TRUNCATED
                              AV_CODEC_CAP_TRUNCATED |

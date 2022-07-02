@@ -22,6 +22,7 @@
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
 #include "avio_internal.h"
+#include "demux.h"
 #include "internal.h"
 
 typedef struct AAXColumn {
@@ -251,6 +252,10 @@ static int aax_read_header(AVFormatContext *s)
                 size  = avio_rb32(pb);
                 a->segments[r].start = start + a->data_offset;
                 a->segments[r].end   = a->segments[r].start + size;
+                if (r &&
+                    a->segments[r].start < a->segments[r-1].end &&
+                    a->segments[r].end   > a->segments[r-1].start)
+                    return AVERROR_INVALIDDATA;
             } else
                 return AVERROR_INVALIDDATA;
         }

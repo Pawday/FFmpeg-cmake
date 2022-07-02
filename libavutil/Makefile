@@ -20,6 +20,7 @@ HEADERS = adler32.h                                                     \
           common.h                                                      \
           cpu.h                                                         \
           crc.h                                                         \
+          csp.h                                                         \
           des.h                                                         \
           detection_bbox.h                                              \
           dict.h                                                        \
@@ -82,6 +83,7 @@ HEADERS = adler32.h                                                     \
           timestamp.h                                                   \
           tree.h                                                        \
           twofish.h                                                     \
+          uuid.h                                                        \
           version.h                                                     \
           video_enc_params.h                                            \
           xtea.h                                                        \
@@ -113,6 +115,7 @@ OBJS = adler32.o                                                        \
        color_utils.o                                                    \
        cpu.o                                                            \
        crc.o                                                            \
+       csp.o                                                            \
        des.o                                                            \
        detection_bbox.o                                                 \
        dict.o                                                           \
@@ -174,6 +177,8 @@ OBJS = adler32.o                                                        \
        tx_float.o                                                       \
        tx_double.o                                                      \
        tx_int32.o                                                       \
+       uuid.o                                                           \
+       version.o                                                        \
        video_enc_params.o                                               \
        film_grain_params.o                                              \
 
@@ -258,6 +263,7 @@ TESTPROGS = adler32                                                     \
             tree                                                        \
             twofish                                                     \
             utf8                                                        \
+            uuid                                                        \
             xtea                                                        \
             tea                                                         \
 

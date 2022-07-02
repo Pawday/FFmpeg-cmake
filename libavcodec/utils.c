@@ -74,13 +74,17 @@ void av_fast_padded_mallocz(void *ptr, unsigned int *size, size_t min_size)
 int av_codec_is_encoder(const AVCodec *avcodec)
 {
     const FFCodec *const codec = ffcodec(avcodec);
-    return codec && (codec->encode_sub || codec->encode2 || codec->receive_packet);
+    return codec && (codec->cb_type == FF_CODEC_CB_TYPE_ENCODE     ||
+                     codec->cb_type == FF_CODEC_CB_TYPE_ENCODE_SUB ||
+                     codec->cb_type == FF_CODEC_CB_TYPE_RECEIVE_PACKET);
 }
 
 int av_codec_is_decoder(const AVCodec *avcodec)
 {
     const FFCodec *const codec = ffcodec(avcodec);
-    return codec && (codec->decode || codec->receive_frame);
+    return codec && (codec->cb_type == FF_CODEC_CB_TYPE_DECODE     ||
+                     codec->cb_type == FF_CODEC_CB_TYPE_DECODE_SUB ||
+                     codec->cb_type == FF_CODEC_CB_TYPE_RECEIVE_FRAME);
 }
 
 int ff_set_dimensions(AVCodecContext *s, int width, int height)
@@ -491,6 +495,8 @@ const char *avcodec_profile_name(enum AVCodecID codec_id, int profile)
 int av_get_exact_bits_per_sample(enum AVCodecID codec_id)
 {
     switch (codec_id) {
+    case AV_CODEC_ID_DFPWM:
+        return 1;
     case AV_CODEC_ID_8SVX_EXP:
     case AV_CODEC_ID_8SVX_FIB:
     case AV_CODEC_ID_ADPCM_ARGO:
@@ -950,6 +956,11 @@ void ff_thread_await_progress(ThreadFrame *f, int progress, int field)
 int ff_thread_can_start_frame(AVCodecContext *avctx)
 {
     return 1;
+}
+
+int ff_slice_thread_init_progress(AVCodecContext *avctx)
+{
+    return 0;
 }
 
 int ff_alloc_entries(AVCodecContext *avctx, int count)

@@ -557,6 +557,22 @@ Set input gain level. Allowed range is from 0 to 1. Default value is 1.
 
 @item gains
 Set output gain for each band. Default value is 1 for all bands.
+
+@item precision
+Set which precision to use when processing samples.
+
+@table @option
+@item auto
+Auto pick internal sample format depending on other filters.
+
+@item float
+Always use single-floating point precision sample format.
+
+@item double
+Always use double-floating point precision sample format.
+@end table
+
+Default value is @code{auto}.
 @end table
 
 @subsection Examples
@@ -913,6 +929,16 @@ Cut frequencies above detection threshold.
 Boost frequencies bellow detection threshold.
 @end table
 Default mode is @samp{cut}.
+
+@item tftype
+Set the type of target filter, can be one of the following:
+
+@table @samp
+@item bell
+@item lowshelf
+@item highshelf
+@end table
+Default type is @samp{bell}.
 @end table
 
 @subsection Commands
@@ -1390,6 +1416,13 @@ Stop sample noise capture and measure new noise band profile.
 
 Default value is @code{none}.
 @end table
+
+@item gain_smooth, gs
+Set gain smooth spatial radius, used to smooth gains applied to each frequency bin.
+Useful to reduce random music noise artefacts.
+Higher values increases smoothing of gains.
+Allowed range is from @code{0} to @code{50}.
+Default value is @code{0}.
 @end table
 
 @subsection Commands
@@ -1622,6 +1655,22 @@ Allowed range is from @var{1} to @var{32}. Default is @var{1}.
 Set IR stream which will be used for convolution, starting from @var{0}, should always be
 lower than supplied value by @code{nbirs} option. Default is @var{0}.
 This option can be changed at runtime via @ref{commands}.
+
+@item precision
+Set which precision to use when processing samples.
+
+@table @option
+@item auto
+Auto pick internal sample format depending on other filters.
+
+@item float
+Always use single-floating point precision sample format.
+
+@item double
+Always use double-floating point precision sample format.
+@end table
+
+Default value is auto.
 @end table
 
 @subsection Examples
@@ -1978,6 +2027,11 @@ in release time while 1 produces higher release times.
 @item level
 Auto level output signal. Default is enabled.
 This normalizes audio back to 0dB if enabled.
+
+@item latency
+Compensate the delay introduced by using the lookahead buffer set with attack
+parameter. Also flush the valid audio data in the lookahead buffer when the
+stream hits EOF.
 @end table
 
 Depending on picked setting it is recommended to upsample input 2x or 4x times
@@ -2033,9 +2087,11 @@ Set transform type of IIR filter.
 @table @option
 @item di
 @item dii
+@item tdi
 @item tdii
 @item latt
 @item svf
+@item zdf
 @end table
 
 @item precision, r
@@ -2562,7 +2618,7 @@ Output only difference samples, useful to hear introduced distortions.
 By default is disabled.
 
 @item adaptive
-Set strenght of adaptive distortion applied. Default value is 0.5.
+Set strength of adaptive distortion applied. Default value is 0.5.
 Allowed range is from 0 to 1.
 
 @item iterations
@@ -3107,15 +3163,18 @@ The filter accepts the following options:
 @table @option
 @item dry
 Set dry gain, how much of original signal is kept. Allowed range is from 0 to 1.
-Default value is 0.7.
+Default value is 1.0.
 
 @item wet
 Set wet gain, how much of filtered signal is kept. Allowed range is from 0 to 1.
-Default value is 0.7.
+Default value is 1.0.
+
+@item boost
+Set max boost factor. Allowed range is from 1 to 12. Default value is 2.
 
 @item decay
 Set delay line decay gain value. Allowed range is from 0 to 1.
-Default value is 0.7.
+Default value is 0.0.
 
 @item feedback
 Set delay line feedback gain value. Allowed range is from 0 to 1.
@@ -3132,6 +3191,9 @@ Default value is 0.5.
 @item delay
 Set delay. Allowed range is from 1 to 100.
 Default value is 20.
+
+@item channels
+Set the channels to process. Default value is all available.
 @end table
 
 @subsection Commands
@@ -3462,9 +3524,11 @@ Set transform type of IIR filter.
 @table @option
 @item di
 @item dii
+@item tdi
 @item tdii
 @item latt
 @item svf
+@item zdf
 @end table
 
 @item precision, r
@@ -3481,6 +3545,13 @@ Always use float 32-bit.
 @item f64
 Always use float 64-bit.
 @end table
+
+@item block_size, b
+Set block size used for reverse IIR processing. If this value is set to high enough
+value (higher than impulse response length truncated when reaches near zero values) filtering
+will become linear phase otherwise if not big enough it will just produce nasty artifacts.
+
+Note that filter delay will be exactly this many samples when set to non-zero value.
 @end table
 
 @subsection Commands
@@ -3550,9 +3621,11 @@ Set transform type of IIR filter.
 @table @option
 @item di
 @item dii
+@item tdi
 @item tdii
 @item latt
 @item svf
+@item zdf
 @end table
 
 @item precision, r
@@ -3569,6 +3642,13 @@ Always use float 32-bit.
 @item f64
 Always use float 64-bit.
 @end table
+
+@item block_size, b
+Set block size used for reverse IIR processing. If this value is set to high enough
+value (higher than impulse response length truncated when reaches near zero values) filtering
+will become linear phase otherwise if not big enough it will just produce nasty artifacts.
+
+Note that filter delay will be exactly this many samples when set to non-zero value.
 @end table
 
 @subsection Commands
@@ -3648,9 +3728,11 @@ Set transform type of IIR filter.
 @table @option
 @item di
 @item dii
+@item tdi
 @item tdii
 @item latt
 @item svf
+@item zdf
 @end table
 
 @item precision, r
@@ -3667,6 +3749,13 @@ Always use float 32-bit.
 @item f64
 Always use float 64-bit.
 @end table
+
+@item block_size, b
+Set block size used for reverse IIR processing. If this value is set to high enough
+value (higher than impulse response length truncated when reaches near zero values) filtering
+will become linear phase otherwise if not big enough it will just produce nasty artifacts.
+
+Note that filter delay will be exactly this many samples when set to non-zero value.
 @end table
 
 @subsection Commands
@@ -3731,9 +3820,11 @@ Set transform type of IIR filter.
 @table @option
 @item di
 @item dii
+@item tdi
 @item tdii
 @item latt
 @item svf
+@item zdf
 @end table
 
 @item precision, r
@@ -3750,6 +3841,13 @@ Always use float 32-bit.
 @item f64
 Always use float 64-bit.
 @end table
+
+@item block_size, b
+Set block size used for reverse IIR processing. If this value is set to high enough
+value (higher than impulse response length truncated when reaches near zero values) filtering
+will become linear phase otherwise if not big enough it will just produce nasty artifacts.
+
+Note that filter delay will be exactly this many samples when set to non-zero value.
 @end table
 
 @section bs2b
@@ -4155,6 +4253,13 @@ Set input gain. Default is 0.9.
 
 @item level_out
 Set output gain. Default is 1.
+
+@item block_size
+Set block size used for reverse IIR processing. If this value is set to high enough
+value (higher than impulse response length truncated when reaches near zero values) filtering
+will become linear phase otherwise if not big enough it will just produce nasty artifacts.
+
+Note that filter delay will be exactly this many samples when set to non-zero value.
 @end table
 
 @subsection Commands
@@ -4524,9 +4629,11 @@ Set transform type of IIR filter.
 @table @option
 @item di
 @item dii
+@item tdi
 @item tdii
 @item latt
 @item svf
+@item zdf
 @end table
 
 @item precision, r
@@ -4543,6 +4650,13 @@ Always use float 32-bit.
 @item f64
 Always use float 64-bit.
 @end table
+
+@item block_size, b
+Set block size used for reverse IIR processing. If this value is set to high enough
+value (higher than impulse response length truncated when reaches near zero values) filtering
+will become linear phase otherwise if not big enough it will just produce nasty artifacts.
+
+Note that filter delay will be exactly this many samples when set to non-zero value.
 @end table
 
 @subsection Examples
@@ -5026,9 +5140,11 @@ Set transform type of IIR filter.
 @table @option
 @item di
 @item dii
+@item tdi
 @item tdii
 @item latt
 @item svf
+@item zdf
 @end table
 
 @item precision, r
@@ -5045,6 +5161,13 @@ Always use float 32-bit.
 @item f64
 Always use float 64-bit.
 @end table
+
+@item block_size, b
+Set block size used for reverse IIR processing. If this value is set to high enough
+value (higher than impulse response length truncated when reaches near zero values) filtering
+will become linear phase otherwise if not big enough it will just produce nasty artifacts.
+
+Note that filter delay will be exactly this many samples when set to non-zero value.
 @end table
 
 @subsection Commands
@@ -5377,9 +5500,11 @@ Set transform type of IIR filter.
 @table @option
 @item di
 @item dii
+@item tdi
 @item tdii
 @item latt
 @item svf
+@item zdf
 @end table
 
 @item precision, r
@@ -5396,6 +5521,13 @@ Always use float 32-bit.
 @item f64
 Always use float 64-bit.
 @end table
+
+@item block_size, b
+Set block size used for reverse IIR processing. If this value is set to high enough
+value (higher than impulse response length truncated when reaches near zero values) filtering
+will become linear phase otherwise if not big enough it will just produce nasty artifacts.
+
+Note that filter delay will be exactly this many samples when set to non-zero value.
 @end table
 
 @subsection Examples
@@ -6558,6 +6690,97 @@ Set window overlap. If set to 1, the recommended overlap for selected
 window function will be picked. Default is @code{0.5}.
 @end table
 
+@section tiltshelf
+
+Boost or cut the lower frequencies and cut or boost higher frequencies
+of the audio using a two-pole shelving filter with a response similar to
+that of a standard hi-fi's tone-controls.
+This is also known as shelving equalisation (EQ).
+
+The filter accepts the following options:
+
+@table @option
+@item gain, g
+Give the gain at 0 Hz. Its useful range is about -20
+(for a large cut) to +20 (for a large boost).
+Beware of clipping when using a positive gain.
+
+@item frequency, f
+Set the filter's central frequency and so can be used
+to extend or reduce the frequency range to be boosted or cut.
+The default value is @code{3000} Hz.
+
+@item width_type, t
+Set method to specify band-width of filter.
+@table @option
+@item h
+Hz
+@item q
+Q-Factor
+@item o
+octave
+@item s
+slope
+@item k
+kHz
+@end table
+
+@item width, w
+Determine how steep is the filter's shelf transition.
+
+@item poles, p
+Set number of poles. Default is 2.
+
+@item mix, m
+How much to use filtered signal in output. Default is 1.
+Range is between 0 and 1.
+
+@item channels, c
+Specify which channels to filter, by default all available are filtered.
+
+@item normalize, n
+Normalize biquad coefficients, by default is disabled.
+Enabling it will normalize magnitude response at DC to 0dB.
+
+@item transform, a
+Set transform type of IIR filter.
+@table @option
+@item di
+@item dii
+@item tdi
+@item tdii
+@item latt
+@item svf
+@item zdf
+@end table
+
+@item precision, r
+Set precison of filtering.
+@table @option
+@item auto
+Pick automatic sample format depending on surround filters.
+@item s16
+Always use signed 16-bit.
+@item s32
+Always use signed 32-bit.
+@item f32
+Always use float 32-bit.
+@item f64
+Always use float 64-bit.
+@end table
+
+@item block_size, b
+Set block size used for reverse IIR processing. If this value is set to high enough
+value (higher than impulse response length truncated when reaches near zero values) filtering
+will become linear phase otherwise if not big enough it will just produce nasty artifacts.
+
+Note that filter delay will be exactly this many samples when set to non-zero value.
+@end table
+
+@subsection Commands
+
+This filter supports some options as @ref{commands}.
+
 @section treble, highshelf
 
 Boost or cut treble (upper) frequencies of the audio using a two-pole
@@ -6614,9 +6837,11 @@ Set transform type of IIR filter.
 @table @option
 @item di
 @item dii
+@item tdi
 @item tdii
 @item latt
 @item svf
+@item zdf
 @end table
 
 @item precision, r
@@ -6633,6 +6858,13 @@ Always use float 32-bit.
 @item f64
 Always use float 64-bit.
 @end table
+
+@item block_size, b
+Set block size used for reverse IIR processing. If this value is set to high enough
+value (higher than impulse response length truncated when reaches near zero values) filtering
+will become linear phase otherwise if not big enough it will just produce nasty artifacts.
+
+Note that filter delay will be exactly this many samples when set to non-zero value.
 @end table
 
 @subsection Commands
@@ -6693,6 +6925,26 @@ Range is 0.1 - 20000.0. Default value is 5.0 Hz.
 @item d
 Depth of modulation as a percentage. Range is 0.0 - 1.0.
 Default value is 0.5.
+@end table
+
+@section virtualbass
+
+Apply audio Virtual Bass filter.
+
+This filter accepts stereo input and produce stereo with LFE (2.1) channels output.
+The newly produced LFE channel have enhanced virtual bass originally obtained from both stereo channels.
+This filter outputs front left and front right channels unchanged as available in stereo input.
+
+The filter accepts the following options:
+
+@table @option
+@item cutoff
+Set the virtual bass cutoff frequency. Default value is 250 Hz.
+Allowed range is from 100 to 500 Hz.
+
+@item strength
+Set the virtual bass strength. Allowed range is from 0.5 to 3.
+Default value is 3.
 @end table
 
 @section volume
@@ -7990,6 +8242,87 @@ tblend=all_mode=grainextract
 @subsection Commands
 This filter supports same @ref{commands} as options.
 
+@anchor{blockdetect}
+@section blockdetect
+
+Determines blockiness of frames without altering the input frames.
+
+Based on Remco Muijs and Ihor Kirenko: "A no-reference blocking artifact measure for adaptive video processing." 2005 13th European signal processing conference.
+
+The filter accepts the following options:
+
+@table @option
+@item period_min
+@item period_max
+Set minimum and maximum values for determining pixel grids (periods).
+Default values are [3,24].
+
+@item planes
+Set planes to filter. Default is first only.
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+Determine blockiness for the first plane and search for periods within [8,32]:
+@example
+blockdetect=period_min=8:period_max=32:planes=1
+@end example
+@end itemize
+
+@anchor{blurdetect}
+@section blurdetect
+
+Determines blurriness of frames without altering the input frames.
+
+Based on Marziliano, Pina, et al. "A no-reference perceptual blur metric."
+Allows for a block-based abbreviation.
+
+The filter accepts the following options:
+
+@table @option
+@item low
+@item high
+Set low and high threshold values used by the Canny thresholding
+algorithm.
+
+The high threshold selects the "strong" edge pixels, which are then
+connected through 8-connectivity with the "weak" edge pixels selected
+by the low threshold.
+
+@var{low} and @var{high} threshold values must be chosen in the range
+[0,1], and @var{low} should be lesser or equal to @var{high}.
+
+Default value for @var{low} is @code{20/255}, and default value for @var{high}
+is @code{50/255}.
+
+@item radius
+Define the radius to search around an edge pixel for local maxima.
+
+@item block_pct
+Determine blurriness only for the most significant blocks, given in percentage.
+
+@item block_width
+Determine blurriness for blocks of width @var{block_width}. If set to any value smaller 1, no blocks are used and the whole image is processed as one no matter of @var{block_height}.
+
+@item block_height
+Determine blurriness for blocks of height @var{block_height}. If set to any value smaller 1, no blocks are used and the whole image is processed as one no matter of @var{block_width}.
+
+@item planes
+Set planes to filter. Default is first only.
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+Determine blur for 80% of most significant 32x32 blocks:
+@example
+blurdetect=block_width=32:block_height=32:block_pct=80
+@end example
+@end itemize
+
 @section bm3d
 
 Denoise frames using Block-Matching 3D algorithm.
@@ -8459,6 +8792,9 @@ Show white point on CIE diagram, by default disabled.
 
 @item gamma
 Set input gamma. Used only with XYZ input color space.
+
+@item fill
+Fill with CIE colors. By default is enabled.
 @end table
 
 @section codecview
@@ -8940,6 +9276,41 @@ colorlevels=romin=0.5:gomin=0.5:bomin=0.5
 @subsection Commands
 
 This filter supports the all above options as @ref{commands}.
+
+@section colormap
+Apply custom color maps to video stream.
+
+This filter needs three input video streams.
+First stream is video stream that is going to be filtered out.
+Second and third video stream specify color patches for source
+color to target color mapping.
+
+The filter accepts the following options:
+
+@table @option
+@item patch_size
+Set the source and target video stream patch size in pixels.
+
+@item nb_patches
+Set the max number of used patches from source and target video stream.
+Default value is number of patches available in additional video streams.
+Max allowed number of patches is @code{64}.
+
+@item type
+Set the adjustments used for target colors. Can be @code{relative} or @code{absolute}.
+Defaults is @code{absolute}.
+
+@item kernel
+Set the kernel used to measure color differences between mapped colors.
+
+The accepted values are:
+@table @samp
+@item euclidean
+@item weuclidean
+@end table
+
+Default is @code{euclidean}.
+@end table
 
 @section colormatrix
 
@@ -12005,8 +12376,8 @@ Specify the search radius for best edge matching. Default value is 2.
 Allowed range is from 0 to 15.
 
 @item ecost
-Specify the edge cost for edge matching. Default value is 0.03125.
-Allowed range is from 0 to 1.
+Specify the edge cost for edge matching. Default value is 1.0.
+Allowed range is from 0 to 9.
 
 @item mcost
 Specify the middle cost for edge matching. Default value is 0.5.
@@ -12181,6 +12552,44 @@ fade=t=in:st=5.5:d=0.5
 
 @end itemize
 
+@section feedback
+Apply feedback video filter.
+
+This filter pass cropped input frames to 2nd output.
+From there it can be filtered with other video filters.
+After filter receives frame from 2nd input, that frame
+is combined on top of original frame from 1st input and passed
+to 1st output.
+
+The typical usage is filter only part of frame.
+
+The filter accepts the following options:
+@table @option
+@item x
+@item y
+Set the top left crop position.
+
+@item w
+@item h
+Set the crop size.
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+Blur only top left rectangular part of video frame size 100x100 with gblur filter.
+@example
+[in][blurin]feedback=x=0:y=0:w=100:h=100[out][blurout];[blurout]gblur=8[blurin]
+@end example
+
+@item
+Draw black box on top left part of video frame of size 100x100 with drawbox filter.
+@example
+[in][blurin]feedback=x=0:y=0:w=100:h=100[out][blurout];[blurout]drawbox=x=0:y=0:w=100:h=100:t=100[blurin]
+@end example
+@end itemize
+
 @section fftdnoiz
 Denoise frames using 3D FFT (frequency domain filtering).
 
@@ -12197,12 +12606,13 @@ Set amount of denoising. By default all detected noise is reduced.
 Default value is 1. Allowed range is from 0 to 1.
 
 @item block
-Set size of block, Default is 4, can be 3, 4, 5 or 6.
-Actual size of block in pixels is 2 to power of @var{block}, so by default
-block size in pixels is 2^4 which is 16.
+Set size of block in pixels, Default is 32, can be 8 to 256.
 
 @item overlap
 Set block overlap. Default is 0.5. Allowed range is from 0.2 to 0.8.
+
+@item method
+Set denoising method. Default is @code{wiener}, can also be @code{hard}.
 
 @item prev
 Set number of previous frames to use for denoising. By default is set to 0.
@@ -13658,6 +14068,10 @@ The Hald CLUT input can be a simple picture or a complete video stream.
 The filter accepts the following options:
 
 @table @option
+@item clut
+Set which CLUT video frames will be processed from second input stream,
+can be @var{first} or @var{all}. Default is @var{all}.
+
 @item shortest
 Force termination when the shortest input terminates. Default is @code{0}.
 @item repeatlast
@@ -14304,6 +14718,41 @@ By default value is 0.
 
 The @code{hysteresis} filter also supports the @ref{framesync} options.
 
+@section iccdetect
+
+Detect the colorspace  from an embedded ICC profile (if present), and update
+the frame's tags accordingly.
+
+This filter accepts the following options:
+
+@table @option
+@item force
+If true, the frame's existing colorspace tags will always be overridden by
+values detected from an ICC profile. Otherwise, they will only be assigned if
+they contain @code{unknown}. Enabled by default.
+@end table
+
+@section iccgen
+
+Generate ICC profiles and attach them to frames.
+
+This filter accepts the following options:
+
+@table @option
+@item color_primaries
+@item color_trc
+Configure the colorspace that the ICC profile will be generated for. The
+default value of @code{auto} infers the value from the input frame's metadata,
+defaulting to BT.709/sRGB as appropriate.
+
+See the @ref{setparams} filter for a list of possible values, but note that
+@code{unknown} are not valid values for this filter.
+
+@item force
+If true, an ICC profile will be generated even if it would overwrite an
+already existing ICC profile. Disabled by default.
+@end table
+
 @section identity
 
 Obtain the identity score between two input videos.
@@ -14679,6 +15128,13 @@ filter choosing the best match with the given options, and the filter will
 output the chosen camera and lens models (logged with level "info"). You must
 provide the make, camera model, and lens model as they are required.
 
+To obtain a list of available makes and models, leave out one or both of @code{make} and
+@code{model} options. The filter will send the full list to the log with level @code{INFO}.
+The first column is the make and the second column is the model.
+To obtain a list of available lenses, set any values for make and model and leave out the
+@code{lens_model} option. The filter will send the full list of lenses in the log with level
+@code{INFO}. The ffmpeg tool will exit after the list is printed.
+
 The filter accepts the following options:
 
 @table @option
@@ -14692,6 +15148,10 @@ required.
 @item lens_model
 The model of the lens (for example, "Canon EF-S 18-55mm f/3.5-5.6 IS STM"). This
 option is required.
+
+@item db_path
+The full path to the lens database folder. If not set, the filter will attempt to
+load the database from the install path when the library was built. Default is unset.
 
 @item mode
 The type of correction to apply. The following values are valid options:
@@ -16072,6 +16532,18 @@ plane, 'Cc' describes the mapping for the output stream third plane and
 
 @item format
 Set output pixel format. Default is @code{yuva444p}.
+
+@item map0s
+@item map1s
+@item map2s
+@item map3s
+Set input to output stream mapping for output Nth plane. Default is @code{0}.
+
+@item map0p
+@item map1p
+@item map2p
+@item map3p
+Set input to output plane mapping for output Nth plane. Default is @code{0}.
 @end table
 
 @subsection Examples
@@ -16429,6 +16901,29 @@ with the reference file @file{ref.mpg}.
 @example
 ffmpeg -i main.mpg -i ref.mpg -lavfi msad -f null -
 @end example
+
+@section multiply
+Multiply first video stream pixels values with second video stream pixels values.
+
+The filter accepts the following options:
+
+@table @option
+@item scale
+Set the scale applied to second video stream. By default is @code{1}.
+Allowed range is from @code{0} to @code{9}.
+
+@item offset
+Set the offset applied to second video stream. By default is @code{0.5}.
+Allowed range is from @code{-1} to @code{1}.
+
+@item planes
+Specify planes from input video stream that will be processed.
+By default all planes are processed.
+@end table
+
+@subsection Commands
+
+This filter supports same @ref{commands} as options.
 
 @section negate
 
@@ -17801,6 +18296,35 @@ format=monow, pixdesctest
 @end example
 
 can be used to test the monowhite pixel format descriptor definition.
+
+@section pixelize
+Apply pixelization to video stream.
+
+The filter accepts the following options:
+@table @option
+@item width, w
+@item height, h
+Set block dimensions that will be used for pixelization.
+Default value is @code{16}.
+
+@item mode, m
+Set the mode of pixelization used.
+
+Possible values are:
+@table @samp
+@item avg
+@item min
+@item max
+@end table
+Default value is @code{avg}.
+
+@item planes, p
+Set what planes to filter. Default is to filter all planes.
+@end table
+
+@subsection Commands
+
+This filter supports all options as @ref{commands}.
 
 @section pixscope
 
@@ -20512,6 +21036,29 @@ ffmpeg -i input1.mkv -i input2.mkv -filter_complex "[0:v][1:v] signature=nb_inpu
 
 @end itemize
 
+@anchor{siti}
+@section siti
+
+Calculate Spatial Info (SI) and Temporal Info (TI) scores for a video, as defined
+in ITU-T P.910: Subjective video quality assessment methods for multimedia
+applications. Available PDF at @url{https://www.itu.int/rec/T-REC-P.910-199909-S/en }.
+
+It accepts the following option:
+
+@table @option
+@item print_summary
+If set to 1, Summary statistics will be printed to the console. Default 0.
+@end table
+
+@subsection Examples
+@itemize
+@item
+To calculate SI/TI metrics and print summary:
+@example
+ffmpeg -i input.mp4 -vf siti=print_summary=1 -f null -
+@end example
+@end itemize
+
 @anchor{smartblur}
 @section smartblur
 
@@ -21371,9 +21918,8 @@ The filter accepts the following options:
 @table @option
 
 @item layout
-Set the grid size (i.e. the number of lines and columns). For the syntax of
-this option, check the
-@ref{video size syntax,,"Video size" section in the ffmpeg-utils manual,ffmpeg-utils}.
+Set the grid size in the form @code{COLUMNSxROWS}. Range is upto UINT_MAX cells.
+Default is @code{6x5}.
 
 @item nb_frames
 Set the maximum number of frames to render in the given area. It must be less
@@ -21381,12 +21927,12 @@ than or equal to @var{w}x@var{h}. The default value is @code{0}, meaning all
 the area will be used.
 
 @item margin
-Set the outer border margin in pixels.
+Set the outer border margin in pixels. Range is 0 to 1024. Default is @code{0}.
 
 @item padding
 Set the inner border thickness (i.e. the number of pixels between frames). For
 more advanced padding options (such as having different values for the edges),
-refer to the pad video filter.
+refer to the pad video filter. Range is 0 to 1024. Default is @code{0}.
 
 @item color
 Specify the color of the unused area. For the syntax of this option, check the
@@ -21395,12 +21941,12 @@ The default value of @var{color} is "black".
 
 @item overlap
 Set the number of frames to overlap when tiling several successive frames together.
-The value must be between @code{0} and @var{nb_frames - 1}.
+The value must be between @code{0} and @var{nb_frames - 1}. Default is @code{0}.
 
 @item init_padding
 Set the number of frames to initially be empty before displaying first output frame.
 This controls how soon will one get first output frame.
-The value must be between @code{0} and @var{nb_frames - 1}.
+The value must be between @code{0} and @var{nb_frames - 1}. Default is @code{0}.
 @end table
 
 @subsection Examples
@@ -25839,7 +26385,7 @@ supposed to be generated forever.
 Set speed of gradients rotation.
 
 @item type, t
-Set type of gradients, can be @code{linear} or @code{radial}.
+Set type of gradients, can be @code{linear} or @code{radial} or @code{circular} or @code{spiral}.
 @end table
 
 
@@ -26139,6 +26685,7 @@ ffplay -f lavfi life=s=300x200:mold=10:r=60:ratio=0.1:death_color=#C83232:life_c
 @anchor{allrgb}
 @anchor{allyuv}
 @anchor{color}
+@anchor{colorchart}
 @anchor{colorspectrum}
 @anchor{haldclutsrc}
 @anchor{nullsrc}
@@ -26150,13 +26697,15 @@ ffplay -f lavfi life=s=300x200:mold=10:r=60:ratio=0.1:death_color=#C83232:life_c
 @anchor{testsrc}
 @anchor{testsrc2}
 @anchor{yuvtestsrc}
-@section allrgb, allyuv, color, colorspectrum, haldclutsrc, nullsrc, pal75bars, pal100bars, rgbtestsrc, smptebars, smptehdbars, testsrc, testsrc2, yuvtestsrc
+@section allrgb, allyuv, color, colorchart, colorspectrum, haldclutsrc, nullsrc, pal75bars, pal100bars, rgbtestsrc, smptebars, smptehdbars, testsrc, testsrc2, yuvtestsrc
 
 The @code{allrgb} source returns frames of size 4096x4096 of all rgb colors.
 
 The @code{allyuv} source returns frames of size 4096x4096 of all yuv colors.
 
 The @code{color} source provides an uniformly colored input.
+
+The @code{colorchart} source provides a colors checker chart.
 
 The @code{colorspectrum} source provides a color spectrum input.
 
@@ -26261,6 +26810,22 @@ Set the type of the color spectrum, only available in the
 @item white
 @item all
 @end table
+
+@item patch_size
+Set patch size of single color patch, only available in the
+@code{colorchart} source. Default is @code{64x64}.
+
+@item preset
+Set colorchecker colors preset, only available in the
+@code{colorchart} source.
+
+Available values are:
+@table @samp
+@item reference
+@item skintones
+@end table
+
+Default value is @code{reference}.
 @end table
 
 @subsection Examples
@@ -28201,6 +28766,9 @@ Specify size of video. For the syntax of this option, check the
 @ref{video size syntax,,"Video size" section in the ffmpeg-utils manual,ffmpeg-utils}.
 Default is @code{1024x512}.
 
+@item rate, r
+Set video rate. Default is @code{25}.
+
 @item mode
 Set display mode.
 This set how each frequency bin will be represented.
@@ -28317,6 +28885,9 @@ It accepts the following values:
 @item delay
 @end table
 Default is @code{magnitude}.
+
+@item channels
+Set channels to use when processing audio. By default all are processed.
 @end table
 
 @section showspatial
@@ -28566,6 +29137,9 @@ Allowed range is from 10 to 200.
 @item limit
 Set upper limit of input audio samples volume in dBFS. Default is 0 dBFS.
 Allowed range is from -100 to 100.
+
+@item opacity
+Set opacity strength when using pixel format output with alpha component.
 @end table
 
 The usage is very similar to the showwaves filter; see the examples in that
@@ -28747,6 +29321,9 @@ Allowed range is from 10 to 200.
 @item limit
 Set upper limit of input audio samples volume in dBFS. Default is 0 dBFS.
 Allowed range is from -100 to 100.
+
+@item opacity
+Set opacity strength when using pixel format output with alpha component.
 @end table
 
 @subsection Examples
@@ -29240,6 +29817,43 @@ Below is a description of the currently available multimedia sources.
 
 This is the same as @ref{movie} source, except it selects an audio
 stream by default.
+
+@section avsynctest
+Generate an Audio/Video Sync Test.
+
+Generated stream periodically shows flash video frame and emits beep in audio.
+Useful to inspect A/V sync issues.
+
+It accepts the following options:
+
+@table @option
+@item size, s
+Set output video size. Default value is @code{hd720}.
+
+@item framerate, fr
+Set output video frame rate. Default value is @code{30}.
+
+@item samplerate, sr
+Set output audio sample rate. Default value is @code{44100}.
+
+@item amplitude, a
+Set output audio beep amplitude. Default value is @code{0.7}.
+
+@item period, p
+Set output audio beep period in seconds. Default value is @code{3}.
+
+@item delay, dl
+Set output video flash delay in number of frames. Default value is @code{0}.
+
+@item cycle, c
+Enable cycling of video delays, by default is disabled.
+
+@item duration, d
+Set stream output duration. By default duration is unlimited.
+
+@item fg, bg, ag
+Set foreground/background/additional color.
+@end table
 
 @anchor{movie}
 @section movie

@@ -17,7 +17,6 @@ target_compile_definitions(ffmpeg_config INTERFACE HAVE_THREADS=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_PTHREADS=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_W32THREADS=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_OS2THREADS=0)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_ISNAN=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_MMXEXT=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_MMX2=HAVE_MMXEXT)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_MMX2=HAVE_MMXEXT)
@@ -35,20 +34,6 @@ else()
     target_compile_definitions(ffmpeg_config INTERFACE HAVE_MKSTEMP=1)
 endif()
 
-
-#TODO:[cmake] detect each function and set to 0 if missing (they are in math.h)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_CBRT=1)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_CBRTF=1)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_COPYSIGN=1)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_ERF=1)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_HYPOT=1)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_RINT=1)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_LRINT=1)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_LRINTF=1)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_ROUND=1)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_ROUNDF=1)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_TRUNC=1)
-target_compile_definitions(ffmpeg_config INTERFACE HAVE_TRUNCF=1)
 
 
 
@@ -106,6 +91,7 @@ target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE2_MUXER=1)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE2_DEMUXER=1)
 
 # look at the end of libavformat/img2dec.c file
+# TODO[cmake]: move it to avformat_config inside libavformat directory
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_BMP_PIPE_DEMUXER=1)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_CRI_PIPE_DEMUXER=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_DDS_PIPE_DEMUXER=0)
@@ -136,6 +122,9 @@ target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_WEBP_PIPE_DEMUXE
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_XBM_PIPE_DEMUXER=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_XPM_PIPE_DEMUXER=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_XWD_PIPE_DEMUXER=0)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_VBN_PIPE_DEMUXER=0)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_QOI_PIPE_DEMUXER=0)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_JPEGXL_PIPE_DEMUXER=0)
 
 
 #CONFIG PROTOCOLS
@@ -160,15 +149,15 @@ target_compile_definitions(ffmpeg_config INTERFACE SWS_MAX_FILTER_SIZE=256)
 
 #_________________________WARNINGS__________________________________________
 #TODO[cmake]: set it for all targets individually or remove for WARNING HELL
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
     add_compile_options("-w")
 endif()
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
     add_compile_options("-w")
 endif()
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     cmake_policy(SET CMP0092 NEW) #cmake disable std MSVC warnings in CMAKE_C_FLAGS
     #CMAKE_DEPFILE_FLAGS_C var in windows contains only /showIncludes and produce include tree
     set(CMAKE_DEPFILE_FLAGS_C "") #erase it

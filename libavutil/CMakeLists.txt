@@ -69,18 +69,23 @@ foreach(math_function ${AVUTIL_REPLACEABLE_MATH_FUNCTIONS})
     check_symbol_exists(${math_function} math.h ${math_function}_exist)
     string(TOUPPER ${math_function} current_math_function_upper_cased)
     if(${math_function}_exist)
-        list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "HAVE_${current_math_function_upper_cased}=1")
+        list(APPEND FF_AVUTIL_MATH_LIB_CONFIG "HAVE_${current_math_function_upper_cased}=1")
     else()
-        list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "HAVE_${current_math_function_upper_cased}=0")
+        list(APPEND FF_AVUTIL_MATH_LIB_CONFIG "HAVE_${current_math_function_upper_cased}=0")
     endif()
 
 endforeach()
 
-
-
-foreach(MACRO ${FF_AVUTIL_DEFAULT_MACRO_LIST})
+foreach(MACRO ${FF_AVUTIL_MATH_LIB_CONFIG})
     target_compile_definitions(avutil_config INTERFACE ${MACRO})
 endforeach()
+
+
+if(NOT ffmpeg_config)
+    foreach(MACRO ${FF_AVUTIL_DEFAULT_MACRO_LIST})
+        target_compile_definitions(avutil_config INTERFACE ${MACRO})
+    endforeach()
+endif()
 
 #TODO[cmake]: when install will come, generate ffversion.h and avconfig.h only for install
 
@@ -169,6 +174,7 @@ list(APPEND AVUTIL_ALL_HEADERS spherical.h)
 list(APPEND AVUTIL_ALL_HEADERS cpu_internal.h)
 list(APPEND AVUTIL_ALL_HEADERS slicethread.h)
 list(APPEND AVUTIL_ALL_HEADERS time_internal.h)
+list(APPEND AVUTIL_ALL_HEADERS getenv_utf8.h)
 
 foreach(AVUTIL_HEADER ${AVUTIL_ALL_HEADERS})
     file(COPY ${AVUTIL_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/)
@@ -219,11 +225,12 @@ list(APPEND AVUTIL_SOURCES spherical.c)
 list(APPEND AVUTIL_SOURCES file_open.c)
 list(APPEND AVUTIL_SOURCES slicethread.c)
 list(APPEND AVUTIL_SOURCES avsscanf.c)
+list(APPEND AVUTIL_SOURCES version.c)
 
 
 
 #!!!!!!!!!! EVIL FUNCTION REPLACEMENT HACK FOR NONOPTIMISED COMPILERS
-if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
 
     set(AVUTIL_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "")
 
@@ -256,7 +263,7 @@ endif()
 
 add_library(avutil OBJECT ${AVUTIL_SOURCES})
 target_link_libraries(avutil PRIVATE ffmpeg_compat)
-target_link_libraries(avutil PRIVATE avutil_config)
+target_link_libraries(avutil PUBLIC avutil_config)
 
 if(MSVC)
     message(WARNING "AVUTIL: adding empty_functions.c hack for unoptimised MSVC")
@@ -294,10 +301,9 @@ target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/aarch64/inc
 target_link_libraries(avutil PRIVATE ffmpeg_config)
 
 
-target_compile_definitions(avutil PRIVATE HAVE_AV_CONFIG_H)
-
 add_library(avutil_static STATIC $<TARGET_OBJECTS:avutil>)
 target_include_directories(avutil_static PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
+target_link_libraries(avutil_static INTERFACE avutil_config)
 
 if (UNIX)
     #on unix we need manually link with math library

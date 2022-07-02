@@ -11,6 +11,7 @@ foreach(AVDEVICE_HEADER ${AVDEVICE_ALL_HEADERS})
 endforeach()
 
 list(APPEND AVDEVICE_SOURCES avdevice.c)
+list(APPEND AVDEVICE_SOURCES version.c)
 list(APPEND AVDEVICE_SOURCES utils.c)
 list(APPEND AVDEVICE_SOURCES alldevices.c)
 

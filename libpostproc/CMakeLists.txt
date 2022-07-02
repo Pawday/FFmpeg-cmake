@@ -12,6 +12,7 @@ foreach(POSTPROC_HEADER ${POSTPROC_ALL_HEADERS})
 endforeach()
 
 list(APPEND POSTPROC_SOURCES postprocess.c)
+list(APPEND POSTPROC_SOURCES version.c)
 
 add_library(postproc OBJECT ${POSTPROC_SOURCES})
 add_library(postproc_static STATIC $<TARGET_OBJECTS:postproc>)

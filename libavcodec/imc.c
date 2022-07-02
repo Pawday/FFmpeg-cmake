@@ -118,7 +118,7 @@ static VLC huffman_vlc[4][4];
 #define IMC_VLC_BITS 9
 #define VLC_TABLES_SIZE 9512
 
-static VLC_TYPE vlc_tables[VLC_TABLES_SIZE][2];
+static VLCElem vlc_tables[VLC_TABLES_SIZE];
 
 static inline double freq2bark(double freq)
 {
@@ -1020,10 +1020,9 @@ static int imc_decode_block(AVCodecContext *avctx, IMCContext *q, int ch)
     return 0;
 }
 
-static int imc_decode_frame(AVCodecContext *avctx, void *data,
+static int imc_decode_frame(AVCodecContext *avctx, AVFrame *frame,
                             int *got_frame_ptr, AVPacket *avpkt)
 {
-    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     int ret, i;
@@ -1093,7 +1092,7 @@ const FFCodec ff_imc_decoder = {
     .priv_data_size = sizeof(IMCContext),
     .init           = imc_decode_init,
     .close          = imc_decode_close,
-    .decode         = imc_decode_frame,
+    FF_CODEC_DECODE_CB(imc_decode_frame),
     .flush          = flush,
     .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_CHANNEL_CONF,
     .p.sample_fmts  = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_FLTP,
@@ -1110,7 +1109,7 @@ const FFCodec ff_iac_decoder = {
     .priv_data_size = sizeof(IMCContext),
     .init           = imc_decode_init,
     .close          = imc_decode_close,
-    .decode         = imc_decode_frame,
+    FF_CODEC_DECODE_CB(imc_decode_frame),
     .flush          = flush,
     .p.capabilities = AV_CODEC_CAP_DR1,
     .p.sample_fmts  = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_FLTP,

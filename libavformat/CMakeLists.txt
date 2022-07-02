@@ -17,6 +17,8 @@ foreach(AVFORMAT_HEADER ${AVFORMAT_ALL_HEADERS})
     file(COPY ${AVFORMAT_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavformat)
 endforeach()
 
+list(APPEND AVFORMAT_SOURCES avformat.c)
+list(APPEND AVFORMAT_SOURCES version.c)
 list(APPEND AVFORMAT_SOURCES utils.c)
 list(APPEND AVFORMAT_SOURCES mux.c)
 list(APPEND AVFORMAT_SOURCES demux.c)
@@ -35,6 +37,8 @@ list(APPEND AVFORMAT_SOURCES seek.c)
 list(APPEND AVFORMAT_SOURCES rawdec.c)
 list(APPEND AVFORMAT_SOURCES to_upper4.c)
 list(APPEND AVFORMAT_SOURCES rawenc.c)
+list(APPEND AVFORMAT_SOURCES mux_utils.c)
+list(APPEND AVFORMAT_SOURCES demux_utils.c)
 
 #set(APPEND AVFORMAT_REGISTERED_PROTOCOLS_SOURCES "") #its filled by each <protoname>_proto cmake script
 

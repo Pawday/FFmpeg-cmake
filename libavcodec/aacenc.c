@@ -1096,11 +1096,13 @@ static av_cold int aac_encode_init(AVCodecContext *avctx)
     s->abs_pow34   = abs_pow34_v;
     s->quant_bands = quantize_bands;
 
-    if (ARCH_X86)
-        ff_aac_dsp_init_x86(s);
+#if ARCH_X86
+    ff_aac_dsp_init_x86(s);
+#endif
 
-    if (HAVE_MIPSDSP)
-        ff_aac_coder_init_mips(s);
+#if HAVE_MIPSDSP
+    ff_aac_coder_init_mips(s);
+#endif
 
     ff_af_queue_init(avctx, &s->afq);
     ff_aac_tableinit();
@@ -1144,7 +1146,7 @@ const FFCodec ff_aac_encoder = {
     .p.id           = AV_CODEC_ID_AAC,
     .priv_data_size = sizeof(AACEncContext),
     .init           = aac_encode_init,
-    .encode2        = aac_encode_frame,
+    FF_CODEC_ENCODE_CB(aac_encode_frame),
     .close          = aac_encode_end,
     .defaults       = aac_encode_defaults,
     .p.supported_samplerates = ff_mpeg4audio_sample_rates,

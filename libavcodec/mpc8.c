@@ -92,7 +92,7 @@ static av_cold void build_vlc(VLC *vlc, unsigned *buf_offset,
                               const uint8_t codes_counts[16],
                               const uint8_t **syms, int offset)
 {
-    static VLC_TYPE vlc_buf[9296][2];
+    static VLCElem vlc_buf[9296];
     uint8_t len[MPC8_MAX_VLC_SIZE];
     unsigned num = 0;
 
@@ -178,10 +178,9 @@ static av_cold int mpc8_decode_init(AVCodecContext * avctx)
     return 0;
 }
 
-static int mpc8_decode_frame(AVCodecContext * avctx, void *data,
+static int mpc8_decode_frame(AVCodecContext *avctx, AVFrame *frame,
                              int *got_frame_ptr, AVPacket *avpkt)
 {
-    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     MPCContext *c = avctx->priv_data;
@@ -391,7 +390,7 @@ const FFCodec ff_mpc8_decoder = {
     .p.id           = AV_CODEC_ID_MUSEPACK8,
     .priv_data_size = sizeof(MPCContext),
     .init           = mpc8_decode_init,
-    .decode         = mpc8_decode_frame,
+    FF_CODEC_DECODE_CB(mpc8_decode_frame),
     .flush          = mpc8_decode_flush,
     .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_CHANNEL_CONF,
     .p.sample_fmts  = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_S16P,

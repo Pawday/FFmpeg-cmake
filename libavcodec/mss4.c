@@ -100,7 +100,7 @@ static VLC vec_entry_vlc[2];
 static av_cold void mss4_init_vlc(VLC *vlc, unsigned *offset,
                                   const uint8_t *lens, const uint8_t *syms)
 {
-    static VLC_TYPE vlc_buf[2146][2];
+    static VLCElem vlc_buf[2146];
     uint8_t  bits[MAX_ENTRIES];
     int i, j;
     int idx = 0;
@@ -444,8 +444,8 @@ static inline void mss4_update_dc_cache(MSS4Context *c, int mb_x)
     }
 }
 
-static int mss4_decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
-                             AVPacket *avpkt)
+static int mss4_decode_frame(AVCodecContext *avctx, AVFrame *rframe,
+                             int *got_frame, AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
@@ -504,7 +504,7 @@ static int mss4_decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
                                                    : AV_PICTURE_TYPE_P;
     if (frame_type == SKIP_FRAME) {
         *got_frame      = 1;
-        if ((ret = av_frame_ref(data, c->pic)) < 0)
+        if ((ret = av_frame_ref(rframe, c->pic)) < 0)
             return ret;
 
         return buf_size;
@@ -559,7 +559,7 @@ static int mss4_decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
         dst[2] += c->pic->linesize[2] * 16;
     }
 
-    if ((ret = av_frame_ref(data, c->pic)) < 0)
+    if ((ret = av_frame_ref(rframe, c->pic)) < 0)
         return ret;
 
     *got_frame      = 1;
@@ -613,7 +613,7 @@ const FFCodec ff_mts2_decoder = {
     .priv_data_size = sizeof(MSS4Context),
     .init           = mss4_decode_init,
     .close          = mss4_decode_end,
-    .decode         = mss4_decode_frame,
+    FF_CODEC_DECODE_CB(mss4_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
     .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP | FF_CODEC_CAP_INIT_THREADSAFE,
 };

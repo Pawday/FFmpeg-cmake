@@ -14,6 +14,7 @@ foreach(AVFILTER_HEADER ${AVFILTER_ALL_HEADERS})
 endforeach()
 
 list(APPEND AVFILTER_SOURCES avfilter.c)
+list(APPEND AVFILTER_SOURCES version.c)
 list(APPEND AVFILTER_SOURCES buffersrc.c)
 list(APPEND AVFILTER_SOURCES buffersink.c)
 list(APPEND AVFILTER_SOURCES avfilter.c)

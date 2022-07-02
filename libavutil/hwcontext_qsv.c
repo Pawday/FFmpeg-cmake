@@ -91,7 +91,8 @@ typedef struct QSVFramesContext {
 
     mfxExtOpaqueSurfaceAlloc opaque_alloc;
     mfxExtBuffer *ext_buffers[1];
-    AVFrame realigned_tmp_frame;
+    AVFrame realigned_upload_frame;
+    AVFrame realigned_download_frame;
 } QSVFramesContext;
 
 static const struct {
@@ -105,10 +106,8 @@ static const struct {
 #if CONFIG_VAAPI
     { AV_PIX_FMT_YUYV422,
                        MFX_FOURCC_YUY2 },
-#if QSV_VERSION_ATLEAST(1, 27)
     { AV_PIX_FMT_Y210,
                        MFX_FOURCC_Y210 },
-#endif
 #endif
 };
 
@@ -303,7 +302,8 @@ static void qsv_frames_uninit(AVHWFramesContext *ctx)
     av_freep(&s->surface_ptrs);
     av_freep(&s->surfaces_internal);
     av_freep(&s->handle_pairs_internal);
-    av_frame_unref(&s->realigned_tmp_frame);
+    av_frame_unref(&s->realigned_upload_frame);
+    av_frame_unref(&s->realigned_download_frame);
     av_buffer_unref(&s->child_frames_ref);
 }
 
@@ -806,12 +806,22 @@ static int qsv_frames_derive_from(AVHWFramesContext *dst_ctx,
 #if CONFIG_D3D11VA
     case AV_HWDEVICE_TYPE_D3D11VA:
         {
+            D3D11_TEXTURE2D_DESC texDesc;
+            dst_ctx->initial_pool_size = src_ctx->initial_pool_size;
             AVD3D11VAFramesContext *dst_hwctx = dst_ctx->hwctx;
-            mfxHDLPair *pair = (mfxHDLPair*)src_hwctx->surfaces[i].Data.MemId;
-            dst_hwctx->texture = (ID3D11Texture2D*)pair->first;
+            dst_hwctx->texture_infos = av_calloc(src_hwctx->nb_surfaces,
+                                                 sizeof(*dst_hwctx->texture_infos));
+            if (!dst_hwctx->texture_infos)
+                return AVERROR(ENOMEM);
             if (src_hwctx->frame_type & MFX_MEMTYPE_SHARED_RESOURCE)
                 dst_hwctx->MiscFlags = D3D11_RESOURCE_MISC_SHARED;
-            dst_hwctx->BindFlags = qsv_get_d3d11va_bind_flags(src_hwctx->frame_type);
+            for (i = 0; i < src_hwctx->nb_surfaces; i++) {
+                mfxHDLPair *pair = (mfxHDLPair*)src_hwctx->surfaces[i].Data.MemId;
+                dst_hwctx->texture_infos[i].texture = (ID3D11Texture2D*)pair->first;
+                dst_hwctx->texture_infos[i].index = pair->second == (mfxMemId)MFX_INFINITE ? (intptr_t)0 : (intptr_t)pair->second;
+            }
+            ID3D11Texture2D_GetDesc(dst_hwctx->texture_infos[0].texture, &texDesc);
+            dst_hwctx->BindFlags = texDesc.BindFlags;
         }
         break;
 #endif
@@ -902,7 +912,7 @@ static int qsv_map_from(AVHWFramesContext *ctx,
        if (child_frames_ctx->device_ctx->type == AV_HWDEVICE_TYPE_D3D11VA) {
             mfxHDLPair *pair = (mfxHDLPair*)surf->Data.MemId;
             dst->data[0] = pair->first;
-            dst->data[1] = pair->second;
+            dst->data[1] = pair->second == (mfxMemId)MFX_INFINITE ? (uint8_t *)0 : pair->second;
         } else {
             dst->data[3] = child_data;
         }
@@ -932,7 +942,7 @@ static int qsv_map_from(AVHWFramesContext *ctx,
     if (child_frames_ctx->device_ctx->type == AV_HWDEVICE_TYPE_D3D11VA) {
         mfxHDLPair *pair = (mfxHDLPair*)surf->Data.MemId;
         dummy->data[0] = pair->first;
-        dummy->data[1] = pair->second;
+        dummy->data[1] = pair->second == (mfxMemId)MFX_INFINITE ? (uint8_t *)0 : pair->second;
     } else {
         dummy->data[3] = child_data;
     }
@@ -1058,21 +1068,46 @@ static int qsv_transfer_data_from(AVHWFramesContext *ctx, AVFrame *dst,
     mfxSyncPoint sync = NULL;
     mfxStatus err;
     int ret = 0;
+    /* download to temp frame if the output is not padded as libmfx requires */
+    AVFrame *tmp_frame = &s->realigned_download_frame;
+    AVFrame *dst_frame;
+    int realigned = 0;
 
     ret = qsv_internal_session_check_init(ctx, 0);
     if (ret < 0)
         return ret;
 
+    /* According to MSDK spec for mfxframeinfo, "Width must be a multiple of 16.
+     * Height must be a multiple of 16 for progressive frame sequence and a
+     * multiple of 32 otherwise.", so allign all frames to 16 before downloading. */
+    if (dst->height & 15 || dst->linesize[0] & 15) {
+        realigned = 1;
+        if (tmp_frame->format != dst->format ||
+            tmp_frame->width  != FFALIGN(dst->linesize[0], 16) ||
+            tmp_frame->height != FFALIGN(dst->height, 16)) {
+            av_frame_unref(tmp_frame);
+
+            tmp_frame->format = dst->format;
+            tmp_frame->width  = FFALIGN(dst->linesize[0], 16);
+            tmp_frame->height = FFALIGN(dst->height, 16);
+            ret = av_frame_get_buffer(tmp_frame, 0);
+            if (ret < 0)
+                return ret;
+        }
+    }
+
+    dst_frame = realigned ? tmp_frame : dst;
+
     if (!s->session_download) {
         if (s->child_frames_ref)
-            return qsv_transfer_data_child(ctx, dst, src);
+            return qsv_transfer_data_child(ctx, dst_frame, src);
 
         av_log(ctx, AV_LOG_ERROR, "Surface download not possible\n");
         return AVERROR(ENOSYS);
     }
 
     out.Info = in->Info;
-    map_frame_to_surface(dst, &out);
+    map_frame_to_surface(dst_frame, &out);
 
     do {
         err = MFXVideoVPP_RunFrameVPPAsync(s->session_download, in, &out, NULL, &sync);
@@ -1093,6 +1128,16 @@ static int qsv_transfer_data_from(AVHWFramesContext *ctx, AVFrame *dst,
         return AVERROR_UNKNOWN;
     }
 
+    if (realigned) {
+        tmp_frame->width  = dst->width;
+        tmp_frame->height = dst->height;
+        ret = av_frame_copy(dst, tmp_frame);
+        tmp_frame->width  = FFALIGN(dst->linesize[0], 16);
+        tmp_frame->height = FFALIGN(dst->height, 16);
+        if (ret < 0)
+            return ret;
+    }
+
     return 0;
 }
 
@@ -1108,7 +1153,7 @@ static int qsv_transfer_data_to(AVHWFramesContext *ctx, AVFrame *dst,
     mfxStatus err;
     int ret = 0;
     /* make a copy if the input is not padded as libmfx requires */
-    AVFrame *tmp_frame = &s->realigned_tmp_frame;
+    AVFrame *tmp_frame = &s->realigned_upload_frame;
     const AVFrame *src_frame;
     int realigned = 0;
 
@@ -1315,7 +1360,8 @@ static int qsv_map_to(AVHWFramesContext *dst_ctx,
         {
             mfxHDLPair *pair = (mfxHDLPair*)hwctx->surfaces[i].Data.MemId;
             if (pair->first == src->data[0]
-                && pair->second == src->data[1]) {
+                && (pair->second == src->data[1]
+                    || (pair->second == (mfxMemId)MFX_INFINITE && src->data[1] == (uint8_t *)0))) {
                 index = i;
                 break;
             }

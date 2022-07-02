@@ -348,7 +348,7 @@ static av_cold void msmpeg4_decode_init_static(void)
                     &ff_v2_mb_type[0][0], 2, 1, 128);
 
     for (unsigned i = 0, offset = 0; i < 4; i++) {
-        static VLC_TYPE vlc_buf[1636 + 2648 + 1532 + 2488][2];
+        static VLCElem vlc_buf[1636 + 2648 + 1532 + 2488];
         ff_mb_non_intra_vlc[i].table           = &vlc_buf[offset];
         ff_mb_non_intra_vlc[i].table_allocated = FF_ARRAY_ELEMS(vlc_buf) - offset;
         init_vlc(&ff_mb_non_intra_vlc[i], MB_NON_INTRA_VLC_BITS, 128,
@@ -872,7 +872,7 @@ const FFCodec ff_msmpeg4v1_decoder = {
     .priv_data_size = sizeof(MpegEncContext),
     .init           = ff_msmpeg4_decode_init,
     .close          = ff_h263_decode_end,
-    .decode         = ff_h263_decode_frame,
+    FF_CODEC_DECODE_CB(ff_h263_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DRAW_HORIZ_BAND | AV_CODEC_CAP_DR1,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE |
                       FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
@@ -891,7 +891,7 @@ const FFCodec ff_msmpeg4v2_decoder = {
     .priv_data_size = sizeof(MpegEncContext),
     .init           = ff_msmpeg4_decode_init,
     .close          = ff_h263_decode_end,
-    .decode         = ff_h263_decode_frame,
+    FF_CODEC_DECODE_CB(ff_h263_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DRAW_HORIZ_BAND | AV_CODEC_CAP_DR1,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE |
                       FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
@@ -910,7 +910,7 @@ const FFCodec ff_msmpeg4v3_decoder = {
     .priv_data_size = sizeof(MpegEncContext),
     .init           = ff_msmpeg4_decode_init,
     .close          = ff_h263_decode_end,
-    .decode         = ff_h263_decode_frame,
+    FF_CODEC_DECODE_CB(ff_h263_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DRAW_HORIZ_BAND | AV_CODEC_CAP_DR1,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE |
                       FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,
@@ -929,7 +929,7 @@ const FFCodec ff_wmv1_decoder = {
     .priv_data_size = sizeof(MpegEncContext),
     .init           = ff_msmpeg4_decode_init,
     .close          = ff_h263_decode_end,
-    .decode         = ff_h263_decode_frame,
+    FF_CODEC_DECODE_CB(ff_h263_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DRAW_HORIZ_BAND | AV_CODEC_CAP_DR1,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE |
                       FF_CODEC_CAP_SKIP_FRAME_FILL_PARAM,

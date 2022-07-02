@@ -240,39 +240,40 @@ static av_cold int libx265_encode_init(AVCodecContext *avctx)
         }
     }
 
-    switch (avctx->pix_fmt) {
-    case AV_PIX_FMT_YUV420P:
-    case AV_PIX_FMT_YUV420P10:
-    case AV_PIX_FMT_YUV420P12:
-        ctx->params->internalCsp = X265_CSP_I420;
-        break;
-    case AV_PIX_FMT_YUV422P:
-    case AV_PIX_FMT_YUV422P10:
-    case AV_PIX_FMT_YUV422P12:
-        ctx->params->internalCsp = X265_CSP_I422;
-        break;
-    case AV_PIX_FMT_GBRP:
-    case AV_PIX_FMT_GBRP10:
-    case AV_PIX_FMT_GBRP12:
-        ctx->params->vui.matrixCoeffs = AVCOL_SPC_RGB;
-        ctx->params->vui.bEnableVideoSignalTypePresentFlag  = 1;
-        ctx->params->vui.bEnableColorDescriptionPresentFlag = 1;
-    case AV_PIX_FMT_YUV444P:
-    case AV_PIX_FMT_YUV444P10:
-    case AV_PIX_FMT_YUV444P12:
+    switch (desc->log2_chroma_w) {
+    // 4:4:4, RGB. gray
+    case 0:
+        // gray
+        if (desc->nb_components == 1) {
+            if (ctx->api->api_build_number < 85) {
+                av_log(avctx, AV_LOG_ERROR,
+                       "libx265 version is %d, must be at least 85 for gray encoding.\n",
+                       ctx->api->api_build_number);
+                return AVERROR_INVALIDDATA;
+            }
+            ctx->params->internalCsp = X265_CSP_I400;
+            break;
+        }
+
+        // set identity matrix for RGB
+        if (desc->flags & AV_PIX_FMT_FLAG_RGB) {
+            ctx->params->vui.matrixCoeffs = AVCOL_SPC_RGB;
+            ctx->params->vui.bEnableVideoSignalTypePresentFlag  = 1;
+            ctx->params->vui.bEnableColorDescriptionPresentFlag = 1;
+        }
+
         ctx->params->internalCsp = X265_CSP_I444;
         break;
-    case AV_PIX_FMT_GRAY8:
-    case AV_PIX_FMT_GRAY10:
-    case AV_PIX_FMT_GRAY12:
-        if (ctx->api->api_build_number < 85) {
-            av_log(avctx, AV_LOG_ERROR,
-                   "libx265 version is %d, must be at least 85 for gray encoding.\n",
-                   ctx->api->api_build_number);
-            return AVERROR_INVALIDDATA;
-        }
-        ctx->params->internalCsp = X265_CSP_I400;
+    // 4:2:0, 4:2:2
+    case 1:
+        ctx->params->internalCsp = desc->log2_chroma_h == 1 ?
+            X265_CSP_I420 : X265_CSP_I422;
         break;
+    default:
+        av_log(avctx, AV_LOG_ERROR,
+               "Pixel format '%s' cannot be mapped to a libx265 CSP!\n",
+               desc->name);
+        return AVERROR_BUG;
     }
 
     if (ctx->crf >= 0) {
@@ -752,7 +753,7 @@ FFCodec ff_libx265_encoder = {
     .p.wrapper_name   = "libx265",
     .init             = libx265_encode_init,
     .init_static_data = libx265_encode_init_csp,
-    .encode2          = libx265_encode_frame,
+    FF_CODEC_ENCODE_CB(libx265_encode_frame),
     .close            = libx265_encode_close,
     .priv_data_size   = sizeof(libx265Context),
     .defaults         = x265_defaults,

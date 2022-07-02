@@ -22,6 +22,7 @@
 #include "libavutil/intreadwrite.h"
 #include "libavutil/dict.h"
 #include "avformat.h"
+#include "demux.h"
 #include "internal.h"
 #include "pcm.h"
 #include "aiff.h"
@@ -72,7 +73,7 @@ static int get_tag(AVIOContext *pb, uint32_t * tag)
 /* Metadata string read */
 static void get_meta(AVFormatContext *s, const char *key, int size)
 {
-    uint8_t *str = av_malloc(size+1);
+    uint8_t *str = av_malloc(size+1U);
 
     if (str) {
         int res = avio_read(s->pb, str, size);

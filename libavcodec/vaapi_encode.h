@@ -191,6 +191,9 @@ typedef struct VAAPIEncodeContext {
     // Desired B frame reference depth.
     int             desired_b_depth;
 
+    // Max Frame Size
+    int             max_frame_size;
+
     // Explicitly set RC mode (otherwise attempt to pick from
     // available modes).
     int             explicit_rc_mode;
@@ -268,6 +271,7 @@ typedef struct VAAPIEncodeContext {
     VAEncMiscParameterRateControl rc_params;
     VAEncMiscParameterHRD        hrd_params;
     VAEncMiscParameterFrameRate   fr_params;
+    VAEncMiscParameterBufferMaxFrameSize mfs_params;
 #if VA_CHECK_VERSION(0, 36, 0)
     VAEncMiscParameterBufferQualityLevel quality_params;
 #endif
@@ -331,6 +335,7 @@ typedef struct VAAPIEncodeContext {
     int idr_counter;
     int gop_counter;
     int end_of_stream;
+    int p_to_gpb;
 
     // Whether the driver supports ROI at all.
     int             roi_allowed;
@@ -384,6 +389,13 @@ typedef struct VAAPIEncodeType {
     // Default quality for this codec - used as quantiser or RC quality
     // factor depending on RC mode.
     int default_quality;
+
+    // Determine encode parameters like block sizes for surface alignment
+    // and slices. This may need to query the profile and entrypoint,
+    // which will be available when this function is called. If not set,
+    // assume that all blocks are 16x16 and that surfaces should be
+    // aligned to match this.
+    int (*get_encoder_caps)(AVCodecContext *avctx);
 
     // Perform any extra codec-specific configuration after the
     // codec context is initialised (set up the private data and
@@ -470,7 +482,11 @@ int ff_vaapi_encode_close(AVCodecContext *avctx);
       "Increase this to improve single channel performance. This option " \
       "doesn't work if driver doesn't implement vaSyncBuffer function.", \
       OFFSET(common.async_depth), AV_OPT_TYPE_INT, \
-      { .i64 = 2 }, 1, MAX_ASYNC_DEPTH, FLAGS }
+      { .i64 = 2 }, 1, MAX_ASYNC_DEPTH, FLAGS }, \
+    { "max_frame_size", \
+      "Maximum frame size (in bytes)",\
+      OFFSET(common.max_frame_size), AV_OPT_TYPE_INT, \
+      { .i64 = 0 }, 0, INT_MAX, FLAGS }
 
 #define VAAPI_ENCODE_RC_MODE(name, desc) \
     { #name, desc, 0, AV_OPT_TYPE_CONST, { .i64 = RC_MODE_ ## name }, \

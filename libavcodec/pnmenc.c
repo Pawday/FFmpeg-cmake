@@ -85,18 +85,25 @@ static int pnm_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
         c  = 'F';
         n  = avctx->width * 4;
         break;
+    case AV_PIX_FMT_GRAYF32:
+        c  = 'f';
+        n  = avctx->width * 4;
+        break;
     default:
         return -1;
     }
     snprintf(bytestream, bytestream_end - bytestream,
              "P%c\n%d %d\n", c, avctx->width, h1);
     bytestream += strlen(bytestream);
-    if (avctx->pix_fmt == AV_PIX_FMT_GBRPF32)
+    if (avctx->pix_fmt == AV_PIX_FMT_GBRPF32 ||
+        avctx->pix_fmt == AV_PIX_FMT_GRAYF32)
         snprintf(bytestream, bytestream_end - bytestream,
-                 "%f\n", avctx->pix_fmt == AV_PIX_FMT_GBRPF32BE ? 1.f: -1.f);
+                 "%f\n", (avctx->pix_fmt == AV_PIX_FMT_GBRPF32BE ||
+                          avctx->pix_fmt == AV_PIX_FMT_GRAYF32BE) ? 1.f: -1.f);
     bytestream += strlen(bytestream);
     if (avctx->pix_fmt != AV_PIX_FMT_MONOWHITE &&
-        avctx->pix_fmt != AV_PIX_FMT_GBRPF32) {
+        avctx->pix_fmt != AV_PIX_FMT_GBRPF32 &&
+        avctx->pix_fmt != AV_PIX_FMT_GRAYF32) {
         int maxdepth = (1 << av_pix_fmt_desc_get(avctx->pix_fmt)->comp[0].depth) - 1;
         snprintf(bytestream, bytestream_end - bytestream,
                  "%d\n", maxdepth);
@@ -120,14 +127,25 @@ static int pnm_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
             g += p->linesize[0] / 4;
             b += p->linesize[1] / 4;
         }
+    } else if (avctx->pix_fmt == AV_PIX_FMT_GRAYF32) {
+        const float *g = (const float *)p->data[0];
+
+        for (int i = 0; i < avctx->height; i++) {
+            for (int j = 0; j < avctx->width; j++) {
+                AV_WN32(bytestream, av_float2int(g[j]));
+                bytestream += 4;
+            }
+
+            g += p->linesize[0] / 4;
+        }
     } else {
-    ptr      = p->data[0];
-    linesize = p->linesize[0];
-    for (i = 0; i < h; i++) {
-        memcpy(bytestream, ptr, n);
-        bytestream += n;
-        ptr        += linesize;
-    }
+        ptr      = p->data[0];
+        linesize = p->linesize[0];
+        for (i = 0; i < h; i++) {
+            memcpy(bytestream, ptr, n);
+            bytestream += n;
+            ptr        += linesize;
+        }
     }
 
     if (avctx->pix_fmt == AV_PIX_FMT_YUV420P || avctx->pix_fmt == AV_PIX_FMT_YUV420P16BE) {
@@ -157,7 +175,7 @@ const FFCodec ff_pgm_encoder = {
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PGM,
     .p.capabilities = AV_CODEC_CAP_DR1,
-    .encode2        = pnm_encode_frame,
+    FF_CODEC_ENCODE_CB(pnm_encode_frame),
     .p.pix_fmts     = (const enum AVPixelFormat[]){
         AV_PIX_FMT_GRAY8, AV_PIX_FMT_GRAY16BE, AV_PIX_FMT_NONE
     },
@@ -172,7 +190,7 @@ const FFCodec ff_pgmyuv_encoder = {
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PGMYUV,
     .p.capabilities = AV_CODEC_CAP_DR1,
-    .encode2        = pnm_encode_frame,
+    FF_CODEC_ENCODE_CB(pnm_encode_frame),
     .p.pix_fmts     = (const enum AVPixelFormat[]){
         AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUV420P16BE, AV_PIX_FMT_NONE
     },
@@ -187,7 +205,7 @@ const FFCodec ff_ppm_encoder = {
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PPM,
     .p.capabilities = AV_CODEC_CAP_DR1,
-    .encode2        = pnm_encode_frame,
+    FF_CODEC_ENCODE_CB(pnm_encode_frame),
     .p.pix_fmts     = (const enum AVPixelFormat[]){
         AV_PIX_FMT_RGB24, AV_PIX_FMT_RGB48BE, AV_PIX_FMT_NONE
     },
@@ -202,7 +220,7 @@ const FFCodec ff_pbm_encoder = {
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PBM,
     .p.capabilities = AV_CODEC_CAP_DR1,
-    .encode2        = pnm_encode_frame,
+    FF_CODEC_ENCODE_CB(pnm_encode_frame),
     .p.pix_fmts     = (const enum AVPixelFormat[]){ AV_PIX_FMT_MONOWHITE,
                                                   AV_PIX_FMT_NONE },
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
@@ -216,8 +234,9 @@ const FFCodec ff_pfm_encoder = {
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PFM,
     .p.capabilities = AV_CODEC_CAP_DR1,
-    .encode2        = pnm_encode_frame,
+    FF_CODEC_ENCODE_CB(pnm_encode_frame),
     .p.pix_fmts     = (const enum AVPixelFormat[]){ AV_PIX_FMT_GBRPF32,
+                                                    AV_PIX_FMT_GRAYF32,
                                                     AV_PIX_FMT_NONE },
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };

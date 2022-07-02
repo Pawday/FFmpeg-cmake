@@ -623,14 +623,13 @@ av_cold int ff_vc1_decode_end(AVCodecContext *avctx)
 /** Decode a VC1/WMV3 frame
  * @todo TODO: Handle VC-1 IDUs (Transport level?)
  */
-static int vc1_decode_frame(AVCodecContext *avctx, void *data,
+static int vc1_decode_frame(AVCodecContext *avctx, AVFrame *pict,
                             int *got_frame, AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size, n_slices = 0, i, ret;
     VC1Context *v = avctx->priv_data;
     MpegEncContext *s = &v->s;
-    AVFrame *pict = data;
     uint8_t *buf2 = NULL;
     const uint8_t *buf_start = buf, *buf_start_second_field = NULL;
     int mb_height, n_slices1=-1;
@@ -1210,7 +1209,7 @@ const FFCodec ff_vc1_decoder = {
     .priv_data_size = sizeof(VC1Context),
     .init           = vc1_decode_init,
     .close          = ff_vc1_decode_end,
-    .decode         = vc1_decode_frame,
+    FF_CODEC_DECODE_CB(vc1_decode_frame),
     .flush          = ff_mpeg_flush,
     .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_DELAY,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
@@ -1248,7 +1247,7 @@ const FFCodec ff_wmv3_decoder = {
     .priv_data_size = sizeof(VC1Context),
     .init           = vc1_decode_init,
     .close          = ff_vc1_decode_end,
-    .decode         = vc1_decode_frame,
+    FF_CODEC_DECODE_CB(vc1_decode_frame),
     .flush          = ff_mpeg_flush,
     .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_DELAY,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
@@ -1287,7 +1286,7 @@ const FFCodec ff_wmv3image_decoder = {
     .priv_data_size = sizeof(VC1Context),
     .init           = vc1_decode_init,
     .close          = ff_vc1_decode_end,
-    .decode         = vc1_decode_frame,
+    FF_CODEC_DECODE_CB(vc1_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
     .flush          = vc1_sprite_flush,
@@ -1307,7 +1306,7 @@ const FFCodec ff_vc1image_decoder = {
     .priv_data_size = sizeof(VC1Context),
     .init           = vc1_decode_init,
     .close          = ff_vc1_decode_end,
-    .decode         = vc1_decode_frame,
+    FF_CODEC_DECODE_CB(vc1_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
     .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
     .flush          = vc1_sprite_flush,
