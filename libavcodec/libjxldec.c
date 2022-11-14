@@ -36,7 +36,7 @@
 
 #include "avcodec.h"
 #include "codec_internal.h"
-#include "internal.h"
+#include "decode.h"
 
 #include <jxl/decode.h>
 #include <jxl/thread_parallel_runner.h>
@@ -321,7 +321,7 @@ static int libjxl_color_encoding_event(AVCodecContext *avctx, AVFrame *frame)
 static int libjxl_decode_frame(AVCodecContext *avctx, AVFrame *frame, int *got_frame, AVPacket *avpkt)
 {
     LibJxlDecodeContext *ctx = avctx->priv_data;
-    uint8_t *buf = avpkt->data;
+    const uint8_t *buf = avpkt->data;
     size_t remaining = avpkt->size;
     JxlDecoderStatus jret;
     int ret;
@@ -447,7 +447,7 @@ static av_cold int libjxl_decode_close(AVCodecContext *avctx)
 
 const FFCodec ff_libjxl_decoder = {
     .p.name           = "libjxl",
-    .p.long_name      = NULL_IF_CONFIG_SMALL("libjxl JPEG XL"),
+    CODEC_LONG_NAME("libjxl JPEG XL"),
     .p.type           = AVMEDIA_TYPE_VIDEO,
     .p.id             = AV_CODEC_ID_JPEGXL,
     .priv_data_size   = sizeof(LibJxlDecodeContext),
@@ -455,6 +455,8 @@ const FFCodec ff_libjxl_decoder = {
     FF_CODEC_DECODE_CB(libjxl_decode_frame),
     .close            = libjxl_decode_close,
     .p.capabilities   = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_OTHER_THREADS,
-    .caps_internal    = FF_CODEC_CAP_AUTO_THREADS | FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal    = FF_CODEC_CAP_NOT_INIT_THREADSAFE |
+                        FF_CODEC_CAP_AUTO_THREADS | FF_CODEC_CAP_INIT_CLEANUP |
+                        FF_CODEC_CAP_ICC_PROFILES,
     .p.wrapper_name   = "libjxl",
 };

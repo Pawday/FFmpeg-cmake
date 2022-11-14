@@ -709,10 +709,13 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *frame)
     }
 
     av_log(ctx, AV_LOG_INFO,
-           "n:%4"PRId64" pts:%7s pts_time:%-7s pos:%9"PRId64" "
+           "n:%4"PRId64" pts:%7s pts_time:%-7s duration:%7"PRId64
+           " duration_time:%-7s pos:%9"PRId64" "
            "fmt:%s sar:%d/%d s:%dx%d i:%c iskey:%d type:%c ",
            inlink->frame_count_out,
-           av_ts2str(frame->pts), av_ts2timestr(frame->pts, &inlink->time_base), frame->pkt_pos,
+           av_ts2str(frame->pts), av_ts2timestr(frame->pts, &inlink->time_base),
+           frame->duration, av_ts2timestr(frame->duration, &inlink->time_base),
+           frame->pkt_pos,
            desc->name,
            frame->sample_aspect_ratio.num, frame->sample_aspect_ratio.den,
            frame->width, frame->height,
@@ -730,12 +733,15 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *frame)
             av_log(ctx, AV_LOG_INFO, " %08"PRIX32, plane_checksum[plane]);
         av_log(ctx, AV_LOG_INFO, "] mean:[");
         for (plane = 0; plane < 4 && frame->data[plane] && frame->linesize[plane]; plane++)
-            av_log(ctx, AV_LOG_INFO, "%"PRId64" ", (sum[plane] + pixelcount[plane]/2) / pixelcount[plane]);
-        av_log(ctx, AV_LOG_INFO, "\b] stdev:[");
+            av_log(ctx, AV_LOG_INFO, "%s%"PRId64,
+                   plane ? " ":"",
+                   (sum[plane] + pixelcount[plane]/2) / pixelcount[plane]);
+        av_log(ctx, AV_LOG_INFO, "] stdev:[");
         for (plane = 0; plane < 4 && frame->data[plane] && frame->linesize[plane]; plane++)
-            av_log(ctx, AV_LOG_INFO, "%3.1f ",
+            av_log(ctx, AV_LOG_INFO, "%s%3.1f",
+                   plane ? " ":"",
                    sqrt((sum2[plane] - sum[plane]*(double)sum[plane]/pixelcount[plane])/pixelcount[plane]));
-        av_log(ctx, AV_LOG_INFO, "\b]");
+        av_log(ctx, AV_LOG_INFO, "]");
     }
     av_log(ctx, AV_LOG_INFO, "\n");
 

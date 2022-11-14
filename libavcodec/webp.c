@@ -46,9 +46,9 @@
 #include "avcodec.h"
 #include "bytestream.h"
 #include "codec_internal.h"
+#include "decode.h"
 #include "exif.h"
 #include "get_bits.h"
-#include "internal.h"
 #include "thread.h"
 #include "tiff_common.h"
 #include "vp8.h"
@@ -200,7 +200,7 @@ typedef struct WebPContext {
     int has_alpha;                      /* has a separate alpha chunk */
     enum AlphaCompression alpha_compression; /* compression type for alpha chunk */
     enum AlphaFilter alpha_filter;      /* filtering method for alpha chunk */
-    uint8_t *alpha_data;                /* alpha chunk data */
+    const uint8_t *alpha_data;          /* alpha chunk data */
     int alpha_data_size;                /* alpha chunk data size */
     int has_exif;                       /* set after an EXIF chunk has been processed */
     int has_iccp;                       /* set after an ICCP chunk has been processed */
@@ -1084,7 +1084,7 @@ static void update_canvas_size(AVCodecContext *avctx, int w, int h)
 }
 
 static int vp8_lossless_decode_frame(AVCodecContext *avctx, AVFrame *p,
-                                     int *got_frame, uint8_t *data_start,
+                                     int *got_frame, const uint8_t *data_start,
                                      unsigned int data_size, int is_alpha_chunk)
 {
     WebPContext *s = avctx->priv_data;
@@ -1240,7 +1240,7 @@ static void alpha_inverse_prediction(AVFrame *frame, enum AlphaFilter m)
 }
 
 static int vp8_lossy_decode_alpha(AVCodecContext *avctx, AVFrame *p,
-                                  uint8_t *data_start,
+                                  const uint8_t *data_start,
                                   unsigned int data_size)
 {
     WebPContext *s = avctx->priv_data;
@@ -1557,7 +1557,7 @@ static av_cold int webp_decode_close(AVCodecContext *avctx)
 
 const FFCodec ff_webp_decoder = {
     .p.name         = "webp",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("WebP image"),
+    CODEC_LONG_NAME("WebP image"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_WEBP,
     .priv_data_size = sizeof(WebPContext),
@@ -1565,5 +1565,5 @@ const FFCodec ff_webp_decoder = {
     FF_CODEC_DECODE_CB(webp_decode_frame),
     .close          = webp_decode_close,
     .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS,
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
+    .caps_internal  = FF_CODEC_CAP_ICC_PROFILES,
 };

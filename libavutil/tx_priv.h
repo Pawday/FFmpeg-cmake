@@ -124,7 +124,7 @@ typedef void TXComplex;
     } while (0)
 
 #define UNSCALE(x) ((double)(x)/2147483648.0)
-#define RESCALE(x) (av_clip64(lrintf((x) * 2147483648.0), INT32_MIN, INT32_MAX))
+#define RESCALE(x) (av_clip64(llrintf((x) * 2147483648.0), INT32_MIN, INT32_MAX))
 
 #define FOLD(x, y) ((int32_t)((x) + (unsigned)(y) + 32) >> 6)
 
@@ -145,6 +145,7 @@ typedef void TXComplex;
 #define FF_TX_PRESHUFFLE   (1ULL << 61) /* Codelet expects permuted coeffs            */
 #define FF_TX_INVERSE_ONLY (1ULL << 60) /* For non-orthogonal inverse-only transforms */
 #define FF_TX_FORWARD_ONLY (1ULL << 59) /* For non-orthogonal forward-only transforms */
+#define FF_TX_ASM_CALL     (1ULL << 58) /* For asm->asm functions only                */
 
 typedef enum FFTXCodeletPriority {
     FF_TX_PRIO_BASE = 0,               /* Baseline priority */
@@ -287,9 +288,12 @@ int ff_tx_gen_ptwo_inplace_revtab_idx(AVTXContext *s);
  * functions in AVX mode.
  *
  * If length is smaller than basis/2 this function will not do anything.
+ *
+ * If inv_lookup is set to 1, it will flip the lookup from out[map[i]] = src[i]
+ * to out[i] = src[map[i]].
  */
-int ff_tx_gen_split_radix_parity_revtab(AVTXContext *s, int invert_lookup,
-                                        int basis, int dual_stride);
+int ff_tx_gen_split_radix_parity_revtab(AVTXContext *s, int len, int inv,
+                                        int inv_lookup, int basis, int dual_stride);
 
 /* Typed init function to initialize shared tables. Will initialize all tables
  * for all factors of a length. */
@@ -297,14 +301,18 @@ void ff_tx_init_tabs_float (int len);
 void ff_tx_init_tabs_double(int len);
 void ff_tx_init_tabs_int32 (int len);
 
-/* Typed init function to initialize an MDCT exptab in a context. */
-int  ff_tx_mdct_gen_exp_float (AVTXContext *s);
-int  ff_tx_mdct_gen_exp_double(AVTXContext *s);
-int  ff_tx_mdct_gen_exp_int32 (AVTXContext *s);
+/* Typed init function to initialize an MDCT exptab in a context.
+ * If pre_tab is set, duplicates the entire table, with the first
+ * copy being shuffled according to pre_tab, and the second copy
+ * being the original. */
+int ff_tx_mdct_gen_exp_float (AVTXContext *s, int *pre_tab);
+int ff_tx_mdct_gen_exp_double(AVTXContext *s, int *pre_tab);
+int ff_tx_mdct_gen_exp_int32 (AVTXContext *s, int *pre_tab);
 
 /* Lists of codelets */
 extern const FFTXCodelet * const ff_tx_codelet_list_float_c       [];
 extern const FFTXCodelet * const ff_tx_codelet_list_float_x86     [];
+extern const FFTXCodelet * const ff_tx_codelet_list_float_aarch64 [];
 
 extern const FFTXCodelet * const ff_tx_codelet_list_double_c      [];
 

@@ -432,6 +432,8 @@ static void *fifo_consumer_thread(void *data)
     fifo_thread_ctx.avf = avf;
     fifo_thread_ctx.last_received_dts = AV_NOPTS_VALUE;
 
+    ff_thread_setname("fifo-consumer");
+
     while (1) {
         uint8_t just_flushed = 0;
 
@@ -505,13 +507,9 @@ static int fifo_mux_init(AVFormatContext *avf, const AVOutputFormat *oformat,
     avf2->flags = avf->flags;
 
     for (i = 0; i < avf->nb_streams; ++i) {
-        AVStream *st = avformat_new_stream(avf2, NULL);
+        AVStream *st = ff_stream_clone(avf2, avf->streams[i]);
         if (!st)
             return AVERROR(ENOMEM);
-
-        ret = ff_stream_encode_params_copy(st, avf->streams[i]);
-        if (ret < 0)
-            return ret;
     }
 
     return 0;

@@ -35,16 +35,15 @@
 
 #include "config_components.h"
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <stddef.h>
 #include <zlib.h>
 
 #include "libavutil/intreadwrite.h"
 #include "avcodec.h"
 #include "bytestream.h"
 #include "codec_internal.h"
+#include "decode.h"
 #include "get_bits.h"
-#include "internal.h"
 #include "zlib_wrapper.h"
 
 typedef struct BlockInfo {
@@ -149,7 +148,9 @@ static int flashsv2_prime(FlashSVContext *s, const uint8_t *src, int size)
     zstream->avail_in  = size;
     zstream->next_out  = data;
     zstream->avail_out = s->block_size * 3;
-    inflate(zstream, Z_SYNC_FLUSH);
+    zret = inflate(zstream, Z_SYNC_FLUSH);
+    if (zret != Z_OK && zret != Z_STREAM_END)
+        return AVERROR_UNKNOWN;
     remaining = s->block_size * 3 - zstream->avail_out;
 
     if ((zret = inflateReset(zstream)) != Z_OK) {
@@ -165,7 +166,9 @@ static int flashsv2_prime(FlashSVContext *s, const uint8_t *src, int size)
      * out of the output from above. See section 3.2.4 of RFC 1951. */
     zstream->next_in  = zlib_header;
     zstream->avail_in = sizeof(zlib_header);
-    inflate(zstream, Z_SYNC_FLUSH);
+    zret = inflate(zstream, Z_SYNC_FLUSH);
+    if (zret != Z_OK)
+        return AVERROR_UNKNOWN;
     while (remaining > 0) {
         unsigned block_size = FFMIN(UINT16_MAX, remaining);
         uint8_t header[5];
@@ -346,6 +349,9 @@ static int flashsv_decode_frame(AVCodecContext *avctx, AVFrame *rframe,
         if (err < 0)
             return err;
         s->keyframedata = avpkt->data;
+        if (s->blocks)
+            memset(s->blocks, 0, (v_blocks + !!v_part) * (h_blocks + !!h_part) *
+                                 sizeof(s->blocks[0]));
     }
     if(s->ver == 2 && !s->blocks)
         s->blocks = av_mallocz((v_blocks + !!v_part) * (h_blocks + !!h_part) *
@@ -496,7 +502,7 @@ static int flashsv_decode_frame(AVCodecContext *avctx, AVFrame *rframe,
 #if CONFIG_FLASHSV_DECODER
 const FFCodec ff_flashsv_decoder = {
     .p.name         = "flashsv",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("Flash Screen Video v1"),
+    CODEC_LONG_NAME("Flash Screen Video v1"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_FLASHSV,
     .priv_data_size = sizeof(FlashSVContext),
@@ -504,7 +510,7 @@ const FFCodec ff_flashsv_decoder = {
     .close          = flashsv_decode_end,
     FF_CODEC_DECODE_CB(flashsv_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
     .p.pix_fmts     = (const enum AVPixelFormat[]) { AV_PIX_FMT_BGR24, AV_PIX_FMT_NONE },
 };
 #endif /* CONFIG_FLASHSV_DECODER */
@@ -554,6 +560,7 @@ static av_cold int flashsv2_decode_end(AVCodecContext *avctx)
     FlashSVContext *s = avctx->priv_data;
 
     av_buffer_unref(&s->keyframedata_buf);
+    s->keyframedata = NULL;
     av_freep(&s->blocks);
     av_freep(&s->keyframe);
     flashsv_decode_end(avctx);
@@ -563,7 +570,7 @@ static av_cold int flashsv2_decode_end(AVCodecContext *avctx)
 
 const FFCodec ff_flashsv2_decoder = {
     .p.name         = "flashsv2",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("Flash Screen Video v2"),
+    CODEC_LONG_NAME("Flash Screen Video v2"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_FLASHSV2,
     .priv_data_size = sizeof(FlashSVContext),
@@ -571,7 +578,7 @@ const FFCodec ff_flashsv2_decoder = {
     .close          = flashsv2_decode_end,
     FF_CODEC_DECODE_CB(flashsv_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
     .p.pix_fmts     = (const enum AVPixelFormat[]) { AV_PIX_FMT_BGR24, AV_PIX_FMT_NONE },
 };
 #endif /* CONFIG_FLASHSV2_DECODER */

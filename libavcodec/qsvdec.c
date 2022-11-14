@@ -27,7 +27,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include <mfx/mfxvideo.h>
+#include <mfxvideo.h>
 
 #include "libavutil/common.h"
 #include "libavutil/fifo.h"
@@ -49,6 +49,12 @@
 #include "hwconfig.h"
 #include "qsv.h"
 #include "qsv_internal.h"
+
+#if QSV_ONEVPL
+#include <mfxdispatcher.h>
+#else
+#define MFXUnload(a) do { } while(0)
+#endif
 
 static const AVRational mfx_tb = { 1, 90000 };
 
@@ -131,11 +137,18 @@ static int qsv_get_continuous_buffer(AVCodecContext *avctx, AVFrame *frame,
         frame->linesize[0] = FFALIGN(avctx->width, 128);
         break;
     case AV_PIX_FMT_P010:
+    case AV_PIX_FMT_P012:
     case AV_PIX_FMT_YUYV422:
         frame->linesize[0] = 2 * FFALIGN(avctx->width, 128);
         break;
     case AV_PIX_FMT_Y210:
+    case AV_PIX_FMT_VUYX:
+    case AV_PIX_FMT_XV30:
+    case AV_PIX_FMT_Y212:
         frame->linesize[0] = 4 * FFALIGN(avctx->width, 128);
+        break;
+    case AV_PIX_FMT_XV36:
+        frame->linesize[0] = 8 * FFALIGN(avctx->width, 128);
         break;
     default:
         av_log(avctx, AV_LOG_ERROR, "Unsupported pixel format.\n");
@@ -148,7 +161,8 @@ static int qsv_get_continuous_buffer(AVCodecContext *avctx, AVFrame *frame,
 
     frame->data[0] = frame->buf[0]->data;
     if (avctx->pix_fmt == AV_PIX_FMT_NV12 ||
-        avctx->pix_fmt == AV_PIX_FMT_P010) {
+        avctx->pix_fmt == AV_PIX_FMT_P010 ||
+        avctx->pix_fmt == AV_PIX_FMT_P012) {
         frame->linesize[1] = frame->linesize[0];
         frame->data[1] = frame->data[0] +
             frame->linesize[0] * FFALIGN(avctx->height, 64);
@@ -187,7 +201,11 @@ static int qsv_init_session(AVCodecContext *avctx, QSVContext *q, mfxSession ses
 
         ret = ff_qsv_init_session_frames(avctx, &q->internal_qs.session,
                                          &q->frames_ctx, q->load_plugins,
+#if QSV_HAVE_OPAQUE
                                          q->iopattern == MFX_IOPATTERN_OUT_OPAQUE_MEMORY,
+#else
+                                         0,
+#endif
                                          q->gpu_copy);
         if (ret < 0) {
             av_buffer_unref(&q->frames_ctx.hw_frames_ctx);
@@ -225,6 +243,11 @@ static int qsv_init_session(AVCodecContext *avctx, QSVContext *q, mfxSession ses
         if (q->internal_qs.session) {
             MFXClose(q->internal_qs.session);
             q->internal_qs.session = NULL;
+        }
+
+        if (q->internal_qs.loader) {
+            MFXUnload(q->internal_qs.loader);
+            q->internal_qs.loader = NULL;
         }
 
         return AVERROR_EXTERNAL;
@@ -300,10 +323,15 @@ static int qsv_decode_preinit(AVCodecContext *avctx, QSVContext *q, enum AVPixel
         AVQSVFramesContext *frames_hwctx = frames_ctx->hwctx;
 
         if (!iopattern) {
+#if QSV_HAVE_OPAQUE
             if (frames_hwctx->frame_type & MFX_MEMTYPE_OPAQUE_FRAME)
                 iopattern = MFX_IOPATTERN_OUT_OPAQUE_MEMORY;
             else if (frames_hwctx->frame_type & MFX_MEMTYPE_VIDEO_MEMORY_DECODER_TARGET)
                 iopattern = MFX_IOPATTERN_OUT_VIDEO_MEMORY;
+#else
+            if (frames_hwctx->frame_type & MFX_MEMTYPE_VIDEO_MEMORY_DECODER_TARGET)
+                iopattern = MFX_IOPATTERN_OUT_VIDEO_MEMORY;
+#endif
         }
     }
 
@@ -1006,7 +1034,7 @@ static const AVClass x##_qsv_class = { \
 }; \
 const FFCodec ff_##x##_qsv_decoder = { \
     .p.name         = #x "_qsv", \
-    .p.long_name    = NULL_IF_CONFIG_SMALL(#X " video (Intel Quick Sync Video acceleration)"), \
+    CODEC_LONG_NAME(#X " video (Intel Quick Sync Video acceleration)"), \
     .priv_data_size = sizeof(QSVDecContext), \
     .p.type         = AVMEDIA_TYPE_VIDEO, \
     .p.id           = AV_CODEC_ID_##X, \
@@ -1019,12 +1047,18 @@ const FFCodec ff_##x##_qsv_decoder = { \
     .p.priv_class   = &x##_qsv_class, \
     .p.pix_fmts     = (const enum AVPixelFormat[]){ AV_PIX_FMT_NV12, \
                                                     AV_PIX_FMT_P010, \
+                                                    AV_PIX_FMT_P012, \
                                                     AV_PIX_FMT_YUYV422, \
                                                     AV_PIX_FMT_Y210, \
+                                                    AV_PIX_FMT_Y212, \
+                                                    AV_PIX_FMT_VUYX, \
+                                                    AV_PIX_FMT_XV30, \
+                                                    AV_PIX_FMT_XV36, \
                                                     AV_PIX_FMT_QSV, \
                                                     AV_PIX_FMT_NONE }, \
     .hw_configs     = qsv_hw_configs, \
     .p.wrapper_name = "qsv", \
+    .caps_internal  = FF_CODEC_CAP_NOT_INIT_THREADSAFE, \
 }; \
 
 #define DEFINE_QSV_DECODER(x, X, bsf_name) DEFINE_QSV_DECODER_WITH_OPTION(x, X, bsf_name, options)

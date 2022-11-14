@@ -29,6 +29,8 @@
 #define AVCODEC_MPEGVIDEODEC_H
 
 #include "libavutil/frame.h"
+#include "libavutil/log.h"
+
 #include "avcodec.h"
 #include "get_bits.h"
 #include "mpegpicture.h"
@@ -48,15 +50,16 @@ void ff_mpv_decode_init(MpegEncContext *s, AVCodecContext *avctx);
 int ff_mpv_common_frame_size_change(MpegEncContext *s);
 
 int ff_mpv_frame_start(MpegEncContext *s, AVCodecContext *avctx);
+void ff_mpv_reconstruct_mb(MpegEncContext *s, int16_t block[12][64]);
 void ff_mpv_report_decode_progress(MpegEncContext *s);
 void ff_mpv_frame_end(MpegEncContext *s);
 
-int ff_mpv_export_qp_table(MpegEncContext *s, AVFrame *f, Picture *p, int qp_type);
+int ff_mpv_export_qp_table(const MpegEncContext *s, AVFrame *f, const Picture *p, int qp_type);
 int ff_mpeg_update_thread_context(AVCodecContext *dst, const AVCodecContext *src);
 void ff_mpeg_draw_horiz_band(MpegEncContext *s, int y, int h);
 void ff_mpeg_flush(AVCodecContext *avctx);
 
-void ff_print_debug_info(MpegEncContext *s, Picture *p, AVFrame *pict);
+void ff_print_debug_info(const MpegEncContext *s, const Picture *p, AVFrame *pict);
 
 static inline int mpeg_get_qscale(MpegEncContext *s)
 {
@@ -65,6 +68,16 @@ static inline int mpeg_get_qscale(MpegEncContext *s)
         return ff_mpeg2_non_linear_qscale[qscale];
     else
         return qscale << 1;
+}
+
+static inline int check_marker(void *logctx, GetBitContext *s, const char *msg)
+{
+    int bit = get_bits1(s);
+    if (!bit)
+        av_log(logctx, AV_LOG_INFO, "Marker bit missing at %d of %d %s\n",
+               get_bits_count(s) - 1, s->size_in_bits, msg);
+
+    return bit;
 }
 
 #endif /* AVCODEC_MPEGVIDEODEC_H */

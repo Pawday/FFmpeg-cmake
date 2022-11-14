@@ -16,6 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "avassert.h"
 #include "cpu.h"
 #include "qsort.h"
 #include "bprint.h"
@@ -44,7 +45,6 @@ int ff_tx_gen_compound_mapping(AVTXContext *s, int n, int m)
     int *in_map, *out_map;
     const int inv = s->inv;
     const int len = n*m;    /* Will not be equal to s->len for MDCTs */
-    const int mdct = TYPE_IS(MDCT, s->type);
     int m_inv, n_inv;
 
     /* Make sure the numbers are coprime */
@@ -63,8 +63,7 @@ int ff_tx_gen_compound_mapping(AVTXContext *s, int n, int m)
     /* Ruritanian map for input, CRT map for output, can be swapped */
     for (int j = 0; j < m; j++) {
         for (int i = 0; i < n; i++) {
-            /* Shifted by 1 to simplify MDCTs */
-            in_map[j*n + i] = ((i*m + j*n) % len) << mdct;
+            in_map[j*n + i] = (i*m + j*n) % len;
             out_map[(i*m*m_inv + j*n*n_inv) % len] = i*m + j;
         }
     }
@@ -207,23 +206,21 @@ static void parity_revtab_generator(int *revtab, int n, int inv, int offset,
                             1, 1, len >> 1, basis, dual_stride, inv_lookup);
 }
 
-int ff_tx_gen_split_radix_parity_revtab(AVTXContext *s, int invert_lookup,
-                                        int basis, int dual_stride)
+int ff_tx_gen_split_radix_parity_revtab(AVTXContext *s, int len, int inv,
+                                        int inv_lookup, int basis, int dual_stride)
 {
-    int len = s->len;
-    int inv = s->inv;
-
-    if (!(s->map = av_mallocz(len*sizeof(*s->map))))
-        return AVERROR(ENOMEM);
-
     basis >>= 1;
     if (len < basis)
         return AVERROR(EINVAL);
 
+    if (!(s->map = av_mallocz(len*sizeof(*s->map))))
+        return AVERROR(ENOMEM);
+
     av_assert0(!dual_stride || !(dual_stride & (dual_stride - 1)));
     av_assert0(dual_stride <= basis);
+
     parity_revtab_generator(s->map, len, inv, 0, 0, 0, len,
-                            basis, dual_stride, invert_lookup);
+                            basis, dual_stride, inv_lookup != 0);
 
     return 0;
 }
@@ -314,6 +311,8 @@ static void print_flags(AVBPrint *bp, uint64_t f)
         av_bprintf(bp, "%spreshuf", prev > 1 ? sep : "");
     if ((f & AV_TX_FULL_IMDCT) && ++prev)
         av_bprintf(bp, "%simdct_full", prev > 1 ? sep : "");
+    if ((f & FF_TX_ASM_CALL) && ++prev)
+        av_bprintf(bp, "%sasm_call", prev > 1 ? sep : "");
     av_bprintf(bp, "]");
 }
 
@@ -369,7 +368,7 @@ static void print_cd_info(const FFTXCodelet *cd, int prio, int print_prio)
     if (print_prio)
         av_bprintf(&bp, ", prio: %i", prio);
 
-    av_log(NULL, AV_LOG_VERBOSE, "%s\n", bp.str);
+    av_log(NULL, AV_LOG_DEBUG, "%s\n", bp.str);
 }
 
 static void print_tx_structure(AVTXContext *s, int depth)
@@ -377,7 +376,7 @@ static void print_tx_structure(AVTXContext *s, int depth)
     const FFTXCodelet *cd = s->cd_self;
 
     for (int i = 0; i <= depth; i++)
-        av_log(NULL, AV_LOG_VERBOSE, "    ");
+        av_log(NULL, AV_LOG_DEBUG, "    ");
 
     print_cd_info(cd, cd->prio, 0);
 
@@ -459,6 +458,9 @@ av_cold int ff_tx_init_subtx(AVTXContext *s, enum AVTXType type,
 #if HAVE_X86ASM
         ff_tx_codelet_list_float_x86,
 #endif
+#if ARCH_AARCH64
+        ff_tx_codelet_list_float_aarch64,
+#endif
     };
     int codelet_list_num = FF_ARRAY_ELEMS(codelet_list);
 
@@ -482,7 +484,7 @@ av_cold int ff_tx_init_subtx(AVTXContext *s, enum AVTXType type,
     uint64_t req_flags = flags;
 
     /* Flags the codelet may require to be present */
-    uint64_t inv_req_mask = AV_TX_FULL_IMDCT | FF_TX_PRESHUFFLE;
+    uint64_t inv_req_mask = AV_TX_FULL_IMDCT | FF_TX_PRESHUFFLE | FF_TX_ASM_CALL;
 
     /* Unaligned codelets are compatible with the aligned flag */
     if (req_flags & FF_TX_ALIGNED)
@@ -591,10 +593,10 @@ av_cold int ff_tx_init_subtx(AVTXContext *s, enum AVTXType type,
     AV_QSORT(cd_matches, nb_cd_matches, TXCodeletMatch, cmp_matches);
 
 #if !CONFIG_SMALL
-    av_log(NULL, AV_LOG_VERBOSE, "%s\n", bp.str);
+    av_log(NULL, AV_LOG_DEBUG, "%s\n", bp.str);
 
     for (int i = 0; i < nb_cd_matches; i++) {
-        av_log(NULL, AV_LOG_VERBOSE, "    %i: ", i + 1);
+        av_log(NULL, AV_LOG_DEBUG, "    %i: ", i + 1);
         print_cd_info(cd_matches[i].cd, cd_matches[i].prio, 1);
     }
 #endif
@@ -615,7 +617,7 @@ av_cold int ff_tx_init_subtx(AVTXContext *s, enum AVTXType type,
         sctx->len        = len;
         sctx->inv        = inv;
         sctx->type       = type;
-        sctx->flags      = flags;
+        sctx->flags      = cd->flags | flags;
         sctx->cd_self    = cd;
 
         s->fn[s->nb_sub] = cd->function;
@@ -675,7 +677,7 @@ av_cold int av_tx_init(AVTXContext **ctx, av_tx_fn *tx, enum AVTXType type,
     *tx  = tmp.fn[0];
 
 #if !CONFIG_SMALL
-    av_log(NULL, AV_LOG_VERBOSE, "Transform tree:\n");
+    av_log(NULL, AV_LOG_DEBUG, "Transform tree:\n");
     print_tx_structure(*ctx, 0);
 #endif
 

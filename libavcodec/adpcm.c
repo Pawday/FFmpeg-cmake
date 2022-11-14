@@ -43,7 +43,7 @@
 #include "adpcm.h"
 #include "adpcm_data.h"
 #include "codec_internal.h"
-#include "internal.h"
+#include "decode.h"
 
 /**
  * @file
@@ -2287,7 +2287,7 @@ static const enum AVSampleFormat sample_fmts_both[] = { AV_SAMPLE_FMT_S16,
 #define ADPCM_DECODER_1(id_, sample_fmts_, name_, long_name_) \
 const FFCodec ff_ ## name_ ## _decoder = {                  \
     .p.name         = #name_,                               \
-    .p.long_name    = NULL_IF_CONFIG_SMALL(long_name_),     \
+    CODEC_LONG_NAME(long_name_),                            \
     .p.type         = AVMEDIA_TYPE_AUDIO,                   \
     .p.id           = id_,                                  \
     .p.capabilities = AV_CODEC_CAP_DR1,                     \
@@ -2296,7 +2296,6 @@ const FFCodec ff_ ## name_ ## _decoder = {                  \
     .init           = adpcm_decode_init,                    \
     FF_CODEC_DECODE_CB(adpcm_decode_frame),                 \
     .flush          = adpcm_flush,                          \
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,         \
 };
 #define ADPCM_DECODER_2(enabled, codec_id, name, sample_fmts, long_name) \
     ADPCM_DECODER_ ## enabled(codec_id, name, sample_fmts, long_name)

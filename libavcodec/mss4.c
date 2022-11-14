@@ -26,12 +26,13 @@
  */
 
 #include "libavutil/thread.h"
+#include "libavutil/imgutils.h"
 
 #include "avcodec.h"
 #include "bytestream.h"
 #include "codec_internal.h"
+#include "decode.h"
 #include "get_bits.h"
-#include "internal.h"
 #include "jpegtables.h"
 #include "mss34dsp.h"
 #include "unary.h"
@@ -477,6 +478,9 @@ static int mss4_decode_frame(AVCodecContext *avctx, AVFrame *rframe,
                width, height);
         return AVERROR_INVALIDDATA;
     }
+    if (av_image_check_size2(width, height, avctx->max_pixels, AV_PIX_FMT_NONE, 0, avctx) < 0)
+        return AVERROR_INVALIDDATA;
+
     if (quality < 1 || quality > 100) {
         av_log(avctx, AV_LOG_ERROR, "Invalid quality setting %d\n", quality);
         return AVERROR_INVALIDDATA;
@@ -607,7 +611,7 @@ static av_cold int mss4_decode_init(AVCodecContext *avctx)
 
 const FFCodec ff_mts2_decoder = {
     .p.name         = "mts2",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("MS Expression Encoder Screen"),
+    CODEC_LONG_NAME("MS Expression Encoder Screen"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_MTS2,
     .priv_data_size = sizeof(MSS4Context),
@@ -615,5 +619,5 @@ const FFCodec ff_mts2_decoder = {
     .close          = mss4_decode_end,
     FF_CODEC_DECODE_CB(mss4_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
-    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP | FF_CODEC_CAP_INIT_THREADSAFE,
+    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
 };

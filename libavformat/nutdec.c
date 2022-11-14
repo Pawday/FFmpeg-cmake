@@ -200,6 +200,8 @@ static int decode_main_header(NUTContext *nut)
     int tmp_stream, tmp_mul, tmp_pts, tmp_size, tmp_res, tmp_head_idx;
 
     length = get_packetheader(nut, bc, 1, MAIN_STARTCODE);
+    if (length == (uint64_t)-1)
+        return AVERROR_INVALIDDATA;
     end = length + avio_tell(bc);
 
     nut->version = ffio_read_varlen(bc);
@@ -243,6 +245,11 @@ static int decode_main_header(NUTContext *nut)
     for (i = 0; i < 256;) {
         int tmp_flags  = ffio_read_varlen(bc);
         int tmp_fields = ffio_read_varlen(bc);
+        if (tmp_fields < 0) {
+            av_log(s, AV_LOG_ERROR, "fields %d is invalid\n", tmp_fields);
+            ret = AVERROR_INVALIDDATA;
+            goto fail;
+        }
 
         if (tmp_fields > 0)
             tmp_pts = get_s(bc);
@@ -1125,7 +1132,6 @@ static int decode_frame(NUTContext *nut, AVPacket *pkt, int frame_code)
         }
         sm_size = avio_tell(bc) - pkt->pos;
         size      -= sm_size;
-        pkt->size -= sm_size;
     }
 
     ret = avio_read(bc, pkt->data + nut->header_len[header_idx], size);

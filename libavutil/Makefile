@@ -196,10 +196,12 @@ OBJS-$(CONFIG_VIDEOTOOLBOX)             += hwcontext_videotoolbox.o
 OBJS-$(CONFIG_VDPAU)                    += hwcontext_vdpau.o
 OBJS-$(CONFIG_VULKAN)                   += hwcontext_vulkan.o
 
+OBJS-$(!CONFIG_VULKAN)                  += hwcontext_stub.o
+
 OBJS += $(COMPAT_OBJS:%=../compat/%)
 
 # Windows resource file
-SLIBOBJS-$(HAVE_GNU_WINDRES)            += avutilres.o
+SHLIBOBJS-$(HAVE_GNU_WINDRES)           += avutilres.o
 
 SKIPHEADERS                            += objc.h
 SKIPHEADERS-$(HAVE_CUDA_H)             += hwcontext_cuda.h

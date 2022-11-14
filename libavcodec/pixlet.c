@@ -21,15 +21,13 @@
 
 #include <stdint.h>
 
-#include "libavutil/imgutils.h"
 #include "libavutil/intmath.h"
-#include "libavutil/opt.h"
 
 #include "avcodec.h"
 #include "bytestream.h"
 #include "codec_internal.h"
+#include "decode.h"
 #include "get_bits.h"
-#include "internal.h"
 #include "thread.h"
 #include "unary.h"
 
@@ -198,7 +196,7 @@ static int read_low_coeffs(AVCodecContext *avctx, int16_t *dst, int size,
     return get_bits_count(bc) >> 3;
 }
 
-static int read_high_coeffs(AVCodecContext *avctx, uint8_t *src, int16_t *dst,
+static int read_high_coeffs(AVCodecContext *avctx, const uint8_t *src, int16_t *dst,
                             int size, int c, int a, int d,
                             int width, ptrdiff_t stride)
 {
@@ -313,7 +311,7 @@ static int read_high_coeffs(AVCodecContext *avctx, uint8_t *src, int16_t *dst,
     return get_bits_count(bc) >> 3;
 }
 
-static int read_highpass(AVCodecContext *avctx, uint8_t *ptr,
+static int read_highpass(AVCodecContext *avctx, const uint8_t *ptr,
                          int plane, AVFrame *frame)
 {
     PixletContext *ctx = avctx->priv_data;
@@ -611,7 +609,7 @@ static int pixlet_decode_frame(AVCodecContext *avctx, AVFrame *p,
     bytestream2_init(&ctx->gb, avpkt->data, avpkt->size);
 
     pktsize = bytestream2_get_be32(&ctx->gb);
-    if (pktsize <= 44 || pktsize - 4 > bytestream2_get_bytes_left(&ctx->gb)) {
+    if (pktsize <= 44 + (NB_LEVELS * 8 + 6) * 3 || pktsize - 4 > bytestream2_get_bytes_left(&ctx->gb)) {
         av_log(avctx, AV_LOG_ERROR, "Invalid packet size %"PRIu32"\n", pktsize);
         return AVERROR_INVALIDDATA;
     }
@@ -694,7 +692,7 @@ static int pixlet_decode_frame(AVCodecContext *avctx, AVFrame *p,
 
 const FFCodec ff_pixlet_decoder = {
     .p.name           = "pixlet",
-    .p.long_name      = NULL_IF_CONFIG_SMALL("Apple Pixlet"),
+    CODEC_LONG_NAME("Apple Pixlet"),
     .p.type           = AVMEDIA_TYPE_VIDEO,
     .p.id             = AV_CODEC_ID_PIXLET,
     .init             = pixlet_init,
@@ -703,6 +701,5 @@ const FFCodec ff_pixlet_decoder = {
     .priv_data_size   = sizeof(PixletContext),
     .p.capabilities   = AV_CODEC_CAP_DR1 |
                         AV_CODEC_CAP_FRAME_THREADS,
-    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE |
-                        FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal    = FF_CODEC_CAP_INIT_CLEANUP,
 };

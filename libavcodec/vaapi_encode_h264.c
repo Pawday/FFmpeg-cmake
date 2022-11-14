@@ -1327,7 +1327,7 @@ static const AVClass vaapi_encode_h264_class = {
 
 const FFCodec ff_h264_vaapi_encoder = {
     .p.name         = "h264_vaapi",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("H.264/AVC (VAAPI)"),
+    CODEC_LONG_NAME("H.264/AVC (VAAPI)"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_H264,
     .priv_data_size = sizeof(VAAPIEncodeH264Context),
@@ -1337,7 +1337,8 @@ const FFCodec ff_h264_vaapi_encoder = {
     .p.priv_class   = &vaapi_encode_h264_class,
     .p.capabilities = AV_CODEC_CAP_DELAY | AV_CODEC_CAP_HARDWARE |
                       AV_CODEC_CAP_DR1,
-    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal  = FF_CODEC_CAP_NOT_INIT_THREADSAFE |
+                      FF_CODEC_CAP_INIT_CLEANUP,
     .defaults       = vaapi_encode_h264_defaults,
     .p.pix_fmts = (const enum AVPixelFormat[]) {
         AV_PIX_FMT_VAAPI,

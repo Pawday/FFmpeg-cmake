@@ -151,7 +151,7 @@ static int dcadec_decode_frame(AVCodecContext *avctx, AVFrame *frame,
                                int *got_frame_ptr, AVPacket *avpkt)
 {
     DCAContext *s = avctx->priv_data;
-    uint8_t *input = avpkt->data;
+    const uint8_t *input = avpkt->data;
     int input_size = avpkt->size;
     int i, ret, prev_packet = s->packet;
     uint32_t mrk;
@@ -412,7 +412,7 @@ static const AVClass dcadec_class = {
 
 const FFCodec ff_dca_decoder = {
     .p.name         = "dca",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("DCA (DTS Coherent Acoustics)"),
+    CODEC_LONG_NAME("DCA (DTS Coherent Acoustics)"),
     .p.type         = AVMEDIA_TYPE_AUDIO,
     .p.id           = AV_CODEC_ID_DTS,
     .priv_data_size = sizeof(DCAContext),
@@ -425,5 +425,5 @@ const FFCodec ff_dca_decoder = {
                                                       AV_SAMPLE_FMT_FLTP, AV_SAMPLE_FMT_NONE },
     .p.priv_class   = &dcadec_class,
     .p.profiles     = NULL_IF_CONFIG_SMALL(ff_dca_profiles),
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
 };

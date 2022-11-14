@@ -404,7 +404,7 @@ static int hqx_decode_frame(AVCodecContext *avctx, AVFrame *frame,
                             int *got_picture_ptr, AVPacket *avpkt)
 {
     HQXContext *ctx = avctx->priv_data;
-    uint8_t *src = avpkt->data;
+    const uint8_t *src = avpkt->data;
     uint32_t info_tag;
     int data_start;
     int i, ret;
@@ -536,7 +536,7 @@ static av_cold int hqx_decode_init(AVCodecContext *avctx)
 
 const FFCodec ff_hqx_decoder = {
     .p.name         = "hqx",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("Canopus HQX"),
+    CODEC_LONG_NAME("Canopus HQX"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_HQX,
     .priv_data_size = sizeof(HQXContext),
@@ -545,6 +545,5 @@ const FFCodec ff_hqx_decoder = {
     .close          = hqx_decode_close,
     .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_SLICE_THREADS |
                       AV_CODEC_CAP_FRAME_THREADS,
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE |
-                      FF_CODEC_CAP_INIT_CLEANUP,
+    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
 };

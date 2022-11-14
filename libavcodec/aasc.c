@@ -24,13 +24,11 @@
  * Autodesk RLE Video Decoder by Konstantin Shishkov
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "avcodec.h"
 #include "codec_internal.h"
-#include "internal.h"
+#include "decode.h"
 #include "msrledec.h"
 
 typedef struct AascContext {
@@ -104,25 +102,25 @@ static int aasc_decode_frame(AVCodecContext *avctx, AVFrame *rframe,
         ff_msrle_decode(avctx, s->frame, 8, &s->gb);
         break;
     case MKTAG('A', 'A', 'S', 'C'):
-    switch (compr) {
-    case 0:
-        stride = (avctx->width * psize + psize) & ~psize;
-        if (buf_size < stride * avctx->height)
+        switch (compr) {
+        case 0:
+            stride = (avctx->width * psize + psize) & ~psize;
+            if (buf_size < stride * avctx->height)
+                return AVERROR_INVALIDDATA;
+            for (i = avctx->height - 1; i >= 0; i--) {
+                memcpy(s->frame->data[0] + i * s->frame->linesize[0], buf, avctx->width * psize);
+                buf += stride;
+                buf_size -= stride;
+            }
+            break;
+        case 1:
+            bytestream2_init(&s->gb, buf, buf_size);
+            ff_msrle_decode(avctx, s->frame, 8, &s->gb);
+            break;
+        default:
+            av_log(avctx, AV_LOG_ERROR, "Unknown compression type %d\n", compr);
             return AVERROR_INVALIDDATA;
-        for (i = avctx->height - 1; i >= 0; i--) {
-            memcpy(s->frame->data[0] + i * s->frame->linesize[0], buf, avctx->width * psize);
-            buf += stride;
-            buf_size -= stride;
         }
-        break;
-    case 1:
-        bytestream2_init(&s->gb, buf, buf_size);
-        ff_msrle_decode(avctx, s->frame, 8, &s->gb);
-        break;
-    default:
-        av_log(avctx, AV_LOG_ERROR, "Unknown compression type %d\n", compr);
-        return AVERROR_INVALIDDATA;
-    }
         break;
     default:
         av_log(avctx, AV_LOG_ERROR, "Unknown FourCC: %X\n", avctx->codec_tag);
@@ -151,7 +149,7 @@ static av_cold int aasc_decode_end(AVCodecContext *avctx)
 
 const FFCodec ff_aasc_decoder = {
     .p.name         = "aasc",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("Autodesk RLE"),
+    CODEC_LONG_NAME("Autodesk RLE"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_AASC,
     .priv_data_size = sizeof(AascContext),
@@ -159,5 +157,4 @@ const FFCodec ff_aasc_decoder = {
     .close          = aasc_decode_end,
     FF_CODEC_DECODE_CB(aasc_decode_frame),
     .p.capabilities = AV_CODEC_CAP_DR1,
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };

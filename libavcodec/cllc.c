@@ -359,7 +359,7 @@ static int cllc_decode_frame(AVCodecContext *avctx, AVFrame *pic,
                              int *got_picture_ptr, AVPacket *avpkt)
 {
     CLLCContext *ctx = avctx->priv_data;
-    uint8_t *src = avpkt->data;
+    const uint8_t *src = avpkt->data;
     uint32_t info_tag, info_offset;
     int data_size;
     GetBitContext gb;
@@ -493,7 +493,7 @@ static av_cold int cllc_decode_init(AVCodecContext *avctx)
 
 const FFCodec ff_cllc_decoder = {
     .p.name         = "cllc",
-    .p.long_name    = NULL_IF_CONFIG_SMALL("Canopus Lossless Codec"),
+    CODEC_LONG_NAME("Canopus Lossless Codec"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_CLLC,
     .priv_data_size = sizeof(CLLCContext),
@@ -501,5 +501,4 @@ const FFCodec ff_cllc_decoder = {
     FF_CODEC_DECODE_CB(cllc_decode_frame),
     .close          = cllc_decode_close,
     .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS,
-    .caps_internal  = FF_CODEC_CAP_INIT_THREADSAFE,
 };
