@@ -9,6 +9,11 @@ list(APPEND FFMPEG_SOURCES ffmpeg_hw.c)
 list(APPEND FFMPEG_SOURCES ffmpeg_filter.c)
 list(APPEND FFMPEG_SOURCES opt_common.c)
 list(APPEND FFMPEG_SOURCES ffmpeg_mux.c)
+list(APPEND FFMPEG_SOURCES ffmpeg_demux.c)
+list(APPEND FFMPEG_SOURCES sync_queue.c)
+list(APPEND FFMPEG_SOURCES objpool.c)
+list(APPEND FFMPEG_SOURCES thread_queue.c)
+list(APPEND FFMPEG_SOURCES ffmpeg_mux_init.c)
 
 
 add_executable(ffmpeg ${FFMPEG_SOURCES})
