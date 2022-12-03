@@ -4,17 +4,7 @@ project(avutil)
 #avutil_config - all macro for libavconfig target
 add_library(avutil_config INTERFACE)
 
-list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "HAVE_MMX2=0")
-list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "HAVE_MMXEXT=HAVE_MMX2")
-list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "FFMPEG_LICENSE=\"AVUTIL LICENCE\"")
-list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "FFMPEG_CONFIGURATION=\"AVUTIL FF CONFIG LEL\"")
-list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "CONFIG_MEMORY_POISONING=0")
-list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "ARCH_MIPS=0")
-list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "ARCH_AARCH64=0")
-list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "ARCH_ARM=0")
-list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "ARCH_PPC=0")
-list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "ARCH_X86=0")
-list(APPEND FF_AVUTIL_DEFAULT_MACRO_LIST "ARCH_LOONGARCH=0")
+
 
 list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "HAVE_MMX2")
 list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "HAVE_MMXEXT")
@@ -64,8 +54,12 @@ list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS round)
 list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS roundf)
 list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS trunc)
 list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS truncf)
+list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS rint)
 
 foreach(math_function ${AVUTIL_REPLACEABLE_MATH_FUNCTIONS})
+    if (UNIX)
+        set(CMAKE_REQUIRED_LIBRARIES "m")
+    endif ()
     check_symbol_exists(${math_function} math.h ${math_function}_exist)
     string(TOUPPER ${math_function} current_math_function_upper_cased)
     if(${math_function}_exist)
@@ -81,11 +75,13 @@ foreach(MACRO ${FF_AVUTIL_MATH_LIB_CONFIG})
 endforeach()
 
 
-if(NOT ffmpeg_config)
-    foreach(MACRO ${FF_AVUTIL_DEFAULT_MACRO_LIST})
-        target_compile_definitions(avutil_config INTERFACE ${MACRO})
-    endforeach()
-endif()
+get_target_property(PROPS ffmpeg_config INTERFACE_COMPILE_DEFINITIONS)
+
+#foreach(PROP ${PROPS})
+#    message(STATUS ${PROP})
+#endforeach()
+
+
 
 #TODO[cmake]: when install will come, generate ffversion.h and avconfig.h only for install
 
@@ -175,6 +171,10 @@ list(APPEND AVUTIL_ALL_HEADERS cpu_internal.h)
 list(APPEND AVUTIL_ALL_HEADERS slicethread.h)
 list(APPEND AVUTIL_ALL_HEADERS time_internal.h)
 list(APPEND AVUTIL_ALL_HEADERS getenv_utf8.h)
+list(APPEND AVUTIL_ALL_HEADERS half2float.h)
+list(APPEND AVUTIL_ALL_HEADERS attributes_internal.h)
+list(APPEND AVUTIL_ALL_HEADERS dict_internal.h)
+list(APPEND AVUTIL_ALL_HEADERS file_open.h)
 
 foreach(AVUTIL_HEADER ${AVUTIL_ALL_HEADERS})
     file(COPY ${AVUTIL_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/)
@@ -226,6 +226,7 @@ list(APPEND AVUTIL_SOURCES file_open.c)
 list(APPEND AVUTIL_SOURCES slicethread.c)
 list(APPEND AVUTIL_SOURCES avsscanf.c)
 list(APPEND AVUTIL_SOURCES version.c)
+list(APPEND AVUTIL_SOURCES half2float.c)
 
 
 
@@ -279,6 +280,7 @@ target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
 add_subdirectory(ppc)
 add_subdirectory(x86)
 add_subdirectory(aarch64)
+add_subdirectory(loongarch)
 
 #   At commit ea7ee4b4e381e0fa731458de0cbf740430eeb013
 #   Diego Biurrun does include libavutil/ppc/util_altivec.h file into swscale_internal.h
@@ -296,6 +298,9 @@ target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/x86/include
 
 #   At commit 70ab2778be9c83dab84340af7e3ba83fa0f98576
 target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/aarch64/include)
+
+#   Ar commit 38cacce22a613d660d4d78e65b0ecdb7be0b908c
+target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/loongarch/include)
 
 
 target_link_libraries(avutil PRIVATE ffmpeg_config)

@@ -28,6 +28,8 @@ target_compile_definitions(ffmpeg_config INTERFACE HAVE_MMXEXT_INLINE=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_NEON=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_AMD3DNOW_INLINE=0)
 target_compile_definitions(ffmpeg_config INTERFACE HAVE_X86ASM=0)
+target_compile_definitions(ffmpeg_config INTERFACE HAVE_LASX=0)
+
 if(WIN32)
     target_compile_definitions(ffmpeg_config INTERFACE HAVE_MKSTEMP=0)
 else()
@@ -110,7 +112,7 @@ target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_PGMYUV_PIPE_DEMU
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_PGX_PIPE_DEMUXER=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_PHOTOCD_PIPE_DEMUXER=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_PICTOR_PIPE_DEMUXER=0)
-target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_PNG_PIPE_DEMUXER=1)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_PNG_PIPE_DEMUXER=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_PPM_PIPE_DEMUXER=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_PSD_PIPE_DEMUXER=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_QDRAW_PIPE_DEMUXER=0)
@@ -125,6 +127,10 @@ target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_XWD_PIPE_DEMUXER
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_VBN_PIPE_DEMUXER=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_QOI_PIPE_DEMUXER=0)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_JPEGXL_PIPE_DEMUXER=0)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_PFM_PIPE_DEMUXER=0)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_PHM_PIPE_DEMUXER=0)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_XWD_PIPE_DEMUXER=0)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE_HDR_PIPE_DEMUXER=0)
 
 
 #CONFIG PROTOCOLS
