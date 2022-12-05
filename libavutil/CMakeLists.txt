@@ -75,13 +75,6 @@ foreach(MACRO ${FF_AVUTIL_MATH_LIB_CONFIG})
 endforeach()
 
 
-get_target_property(PROPS ffmpeg_config INTERFACE_COMPILE_DEFINITIONS)
-
-#foreach(PROP ${PROPS})
-#    message(STATUS ${PROP})
-#endforeach()
-
-
 
 #TODO[cmake]: when install will come, generate ffversion.h and avconfig.h only for install
 
