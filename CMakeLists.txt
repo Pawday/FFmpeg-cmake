@@ -88,6 +88,7 @@ target_compile_definitions(ffmpeg_config INTERFACE CONFIG_AVFILTER=1)
 #CONFIG MUXERS
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_H264_MUXER=1)
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE2_MUXER=1)
+target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE2PIPE_MUXER=1)
 
 #CONFIG DEMUXERS
 target_compile_definitions(ffmpeg_config INTERFACE CONFIG_IMAGE2_DEMUXER=1)
