@@ -38,9 +38,16 @@
 #include "codec_internal.h"
 #include "decode.h"
 #include "encode.h"
+
+#if CONFIG_FRAME_THREAD_ENCODER
 #include "frame_thread_encoder.h"
+#endif
+
 #include "internal.h"
+
+#if HAVE_THREADS
 #include "thread.h"
+#endif
 
 int avcodec_default_execute(AVCodecContext *c, int (*func)(AVCodecContext *c2, void *arg2), void *arg, int *ret, int count, int size)
 {
@@ -67,7 +74,7 @@ int avcodec_default_execute2(AVCodecContext *c, int (*func)(AVCodecContext *c2, 
     emms_c();
     return 0;
 }
-
+#if HAVE_THREADS
 static AVMutex codec_mutex = AV_MUTEX_INITIALIZER;
 
 static void lock_avcodec(const FFCodec *codec)
@@ -81,6 +88,10 @@ static void unlock_avcodec(const FFCodec *codec)
     if (codec->caps_internal & FF_CODEC_CAP_NOT_INIT_THREADSAFE && codec->init)
         ff_mutex_unlock(&codec_mutex);
 }
+#else
+#define lock_avcodec(args)
+#define unlock_avcodec(args)
+#endif
 
 static int64_t get_bit_rate(AVCodecContext *ctx)
 {
@@ -297,8 +308,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
         ret = ff_decode_preinit(avctx);
     if (ret < 0)
         goto free_and_end;
-
-    if (HAVE_THREADS && !avci->frame_thread_encoder) {
+#if HAVE_THREADS
+    if (!avci->frame_thread_encoder) {
         /* Frame-threaded decoders call FFCodec.init for their child contexts. */
         lock_avcodec(codec2);
         ret = ff_thread_init(avctx);
@@ -307,8 +318,11 @@ FF_ENABLE_DEPRECATION_WARNINGS
             goto free_and_end;
         }
     }
-    if (!HAVE_THREADS && !(codec2->caps_internal & FF_CODEC_CAP_AUTO_THREADS))
+#endif
+#if !HAVE_THREADS
+    if (!(codec2->caps_internal & FF_CODEC_CAP_AUTO_THREADS))
         avctx->thread_count = 1;
+#endif
 
     if (!(avctx->active_thread_type & FF_THREAD_FRAME) ||
         avci->frame_thread_encoder) {
@@ -403,10 +417,13 @@ void avcodec_flush_buffers(AVCodecContext *avctx)
     av_frame_unref(avci->buffer_frame);
     av_packet_unref(avci->buffer_pkt);
 
-    if (HAVE_THREADS && avctx->active_thread_type & FF_THREAD_FRAME)
-        ff_thread_flush(avctx);
-    else if (ffcodec(avctx->codec)->flush)
-        ffcodec(avctx->codec)->flush(avctx);
+    if (!(HAVE_THREADS && avctx->active_thread_type & FF_THREAD_FRAME)) {
+        if (ffcodec(avctx->codec)->flush)
+            ffcodec(avctx->codec)->flush(avctx);
+    }
+#if HAVE_THREADS
+    else ff_thread_flush(avctx);
+#endif
 }
 
 void avsubtitle_free(AVSubtitle *sub)
@@ -440,13 +457,14 @@ av_cold int avcodec_close(AVCodecContext *avctx)
 
     if (avcodec_is_open(avctx)) {
         AVCodecInternal *avci = avctx->internal;
-
-        if (CONFIG_FRAME_THREAD_ENCODER &&
-            avci->frame_thread_encoder && avctx->thread_count > 1) {
+#if CONFIG_FRAME_THREAD_ENCODER
+        if (avci->frame_thread_encoder && avctx->thread_count > 1)
             ff_frame_thread_encoder_free(avctx);
-        }
-        if (HAVE_THREADS && avci->thread_ctx)
+#endif
+#if HAVE_THREADS
+        if (avci->thread_ctx)
             ff_thread_free(avctx);
+#endif
         if (avci->needs_close && ffcodec(avctx->codec)->close)
             ffcodec(avctx->codec)->close(avctx);
         avci->byte_buffer_size = 0;
