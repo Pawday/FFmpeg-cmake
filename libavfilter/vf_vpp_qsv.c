@@ -45,9 +45,7 @@
 #define ENH_FILTERS_COUNT (8)
 
 typedef struct VPPContext{
-    const AVClass *class;
-
-    QSVVPPContext *qsv;
+    QSVVPPContext qsv;
 
     /* Video Enhancement Algorithms */
     mfxExtVPPDeinterlacing  deinterlace_conf;
@@ -59,6 +57,11 @@ typedef struct VPPContext{
     mfxExtVPPMirroring mirroring_conf;
     mfxExtVPPScaling scale_conf;
 
+    /**
+     * New dimensions. Special values are:
+     *   0 = original width/height
+     *  -1 = keep original aspect
+     */
     int out_width;
     int out_height;
     /**
@@ -95,8 +98,7 @@ typedef struct VPPContext{
     char *ow, *oh;
     char *output_format_str;
 
-    int async_depth;
-    int eof;
+    int has_passthrough;        /* apply pass through mode if possible */
 } VPPContext;
 
 static const AVOption options[] = {
@@ -127,13 +129,17 @@ static const AVOption options[] = {
     { "cx",   "set the x crop area expression",       OFFSET(cx), AV_OPT_TYPE_STRING, { .str = "(in_w-out_w)/2" }, 0, 0, FLAGS },
     { "cy",   "set the y crop area expression",       OFFSET(cy), AV_OPT_TYPE_STRING, { .str = "(in_h-out_h)/2" }, 0, 0, FLAGS },
 
-    { "w",      "Output video width",  OFFSET(ow), AV_OPT_TYPE_STRING, { .str="cw" }, 0, 255, .flags = FLAGS },
-    { "width",  "Output video width",  OFFSET(ow), AV_OPT_TYPE_STRING, { .str="cw" }, 0, 255, .flags = FLAGS },
-    { "h",      "Output video height", OFFSET(oh), AV_OPT_TYPE_STRING, { .str="w*ch/cw" }, 0, 255, .flags = FLAGS },
-    { "height", "Output video height", OFFSET(oh), AV_OPT_TYPE_STRING, { .str="w*ch/cw" }, 0, 255, .flags = FLAGS },
+    { "w",      "Output video width(0=input video width, -1=keep input video aspect)",  OFFSET(ow), AV_OPT_TYPE_STRING, { .str="cw" }, 0, 255, .flags = FLAGS },
+    { "width",  "Output video width(0=input video width, -1=keep input video aspect)",  OFFSET(ow), AV_OPT_TYPE_STRING, { .str="cw" }, 0, 255, .flags = FLAGS },
+    { "h",      "Output video height(0=input video height, -1=keep input video aspect)", OFFSET(oh), AV_OPT_TYPE_STRING, { .str="w*ch/cw" }, 0, 255, .flags = FLAGS },
+    { "height", "Output video height(0=input video height, -1=keep input video aspect)", OFFSET(oh), AV_OPT_TYPE_STRING, { .str="w*ch/cw" }, 0, 255, .flags = FLAGS },
     { "format", "Output pixel format", OFFSET(output_format_str), AV_OPT_TYPE_STRING, { .str = "same" }, .flags = FLAGS },
-    { "async_depth", "Internal parallelization depth, the higher the value the higher the latency.", OFFSET(async_depth), AV_OPT_TYPE_INT, { .i64 = 0 }, 0, INT_MAX, .flags = FLAGS },
-    { "scale_mode", "scale mode: 0=auto, 1=low power, 2=high quality", OFFSET(scale_mode), AV_OPT_TYPE_INT, { .i64 = MFX_SCALING_MODE_DEFAULT }, MFX_SCALING_MODE_DEFAULT, MFX_SCALING_MODE_QUALITY, .flags = FLAGS, "scale mode" },
+    { "async_depth", "Internal parallelization depth, the higher the value the higher the latency.", OFFSET(qsv.async_depth), AV_OPT_TYPE_INT, { .i64 = 0 }, 0, INT_MAX, .flags = FLAGS },
+    { "scale_mode", "scale & format conversion mode: 0=auto, 1=low power, 2=high quality", OFFSET(scale_mode), AV_OPT_TYPE_INT, { .i64 = MFX_SCALING_MODE_DEFAULT }, MFX_SCALING_MODE_DEFAULT, MFX_SCALING_MODE_QUALITY, .flags = FLAGS, "scale mode" },
+    { "auto",      "auto mode",             0,    AV_OPT_TYPE_CONST,  { .i64 = MFX_SCALING_MODE_DEFAULT},  INT_MIN, INT_MAX, FLAGS, "scale mode"},
+    { "low_power", "low power mode",        0,    AV_OPT_TYPE_CONST,  { .i64 = MFX_SCALING_MODE_LOWPOWER}, INT_MIN, INT_MAX, FLAGS, "scale mode"},
+    { "hq",        "high quality mode",     0,    AV_OPT_TYPE_CONST,  { .i64 = MFX_SCALING_MODE_QUALITY},  INT_MIN, INT_MAX, FLAGS, "scale mode"},
+
     { NULL }
 };
 
@@ -146,32 +152,41 @@ static const char *const var_names[] = {
     "ch",
     "cx",
     "cy",
+    "a", "dar",
+    "sar",
     NULL
 };
 
 enum var_name {
-    VAR_iW, VAR_IN_W,
-    VAR_iH, VAR_IN_H,
-    VAR_oW, VAR_OUT_W, VAR_W,
-    VAR_oH, VAR_OUT_H, VAR_H,
-    CW,
-    CH,
-    CX,
-    CY,
+    VAR_IW, VAR_IN_W,
+    VAR_IH, VAR_IN_H,
+    VAR_OW, VAR_OUT_W, VAR_W,
+    VAR_OH, VAR_OUT_H, VAR_H,
+    VAR_CW,
+    VAR_CH,
+    VAR_CX,
+    VAR_CY,
+    VAR_A, VAR_DAR,
+    VAR_SAR,
     VAR_VARS_NB
 };
 
 static int eval_expr(AVFilterContext *ctx)
 {
 #define PASS_EXPR(e, s) {\
-    ret = av_expr_parse(&e, s, var_names, NULL, NULL, NULL, NULL, 0, ctx); \
-    if (ret < 0) {\
-        av_log(ctx, AV_LOG_ERROR, "Error when passing '%s'.\n", s);\
-        goto release;\
+    if (s) {\
+        ret = av_expr_parse(&e, s, var_names, NULL, NULL, NULL, NULL, 0, ctx); \
+        if (ret < 0) {                                                  \
+            av_log(ctx, AV_LOG_ERROR, "Error when passing '%s'.\n", s); \
+            goto release;                                               \
+        }                                                               \
     }\
 }
-#define CALC_EXPR(e, v, i) {\
-    i = v = av_expr_eval(e, var_values, NULL); \
+#define CALC_EXPR(e, v, i, d) {\
+    if (e)\
+        i = v = av_expr_eval(e, var_values, NULL);      \
+    else\
+        i = v = d;\
 }
     VPPContext *vpp = ctx->priv;
     double  var_values[VAR_VARS_NB] = { NAN };
@@ -189,39 +204,43 @@ static int eval_expr(AVFilterContext *ctx)
     PASS_EXPR(cx_expr, vpp->cx);
     PASS_EXPR(cy_expr, vpp->cy);
 
-    var_values[VAR_iW] =
+    var_values[VAR_IW] =
     var_values[VAR_IN_W] = ctx->inputs[0]->w;
 
-    var_values[VAR_iH] =
+    var_values[VAR_IH] =
     var_values[VAR_IN_H] = ctx->inputs[0]->h;
 
+    var_values[VAR_A] = (double)var_values[VAR_IN_W] / var_values[VAR_IN_H];
+    var_values[VAR_SAR] = ctx->inputs[0]->sample_aspect_ratio.num ?
+        (double)ctx->inputs[0]->sample_aspect_ratio.num / ctx->inputs[0]->sample_aspect_ratio.den : 1;
+    var_values[VAR_DAR] = var_values[VAR_A] * var_values[VAR_SAR];
+
     /* crop params */
-    CALC_EXPR(cw_expr, var_values[CW], vpp->crop_w);
-    CALC_EXPR(ch_expr, var_values[CH], vpp->crop_h);
+    CALC_EXPR(cw_expr, var_values[VAR_CW], vpp->crop_w, var_values[VAR_IW]);
+    CALC_EXPR(ch_expr, var_values[VAR_CH], vpp->crop_h, var_values[VAR_IH]);
 
     /* calc again in case cw is relative to ch */
-    CALC_EXPR(cw_expr, var_values[CW], vpp->crop_w);
+    CALC_EXPR(cw_expr, var_values[VAR_CW], vpp->crop_w, var_values[VAR_IW]);
 
     CALC_EXPR(w_expr,
-            var_values[VAR_OUT_W] = var_values[VAR_oW] = var_values[VAR_W],
-            vpp->out_width);
+            var_values[VAR_OUT_W] = var_values[VAR_OW] = var_values[VAR_W],
+            vpp->out_width, var_values[VAR_CW]);
     CALC_EXPR(h_expr,
-            var_values[VAR_OUT_H] = var_values[VAR_oH] = var_values[VAR_H],
-            vpp->out_height);
+            var_values[VAR_OUT_H] = var_values[VAR_OH] = var_values[VAR_H],
+            vpp->out_height, var_values[VAR_CH]);
 
     /* calc again in case ow is relative to oh */
     CALC_EXPR(w_expr,
-            var_values[VAR_OUT_W] = var_values[VAR_oW] = var_values[VAR_W],
-            vpp->out_width);
+            var_values[VAR_OUT_W] = var_values[VAR_OW] = var_values[VAR_W],
+            vpp->out_width, var_values[VAR_CW]);
 
-
-    CALC_EXPR(cx_expr, var_values[CX], vpp->crop_x);
-    CALC_EXPR(cy_expr, var_values[CY], vpp->crop_y);
+    CALC_EXPR(cx_expr, var_values[VAR_CX], vpp->crop_x, (var_values[VAR_IW] - var_values[VAR_OW]) / 2);
+    CALC_EXPR(cy_expr, var_values[VAR_CY], vpp->crop_y, (var_values[VAR_IH] - var_values[VAR_OH]) / 2);
 
     /* calc again in case cx is relative to cy */
-    CALC_EXPR(cx_expr, var_values[CX], vpp->crop_x);
+    CALC_EXPR(cx_expr, var_values[VAR_CX], vpp->crop_x, (var_values[VAR_IW] - var_values[VAR_OW]) / 2);
 
-    if ((vpp->crop_w != var_values[VAR_iW]) || (vpp->crop_h != var_values[VAR_iH]))
+    if ((vpp->crop_w != var_values[VAR_IW]) || (vpp->crop_h != var_values[VAR_IH]))
         vpp->use_crop = 1;
 
 release:
@@ -237,11 +256,26 @@ release:
     return ret;
 }
 
+static av_cold int vpp_preinit(AVFilterContext *ctx)
+{
+    VPPContext  *vpp  = ctx->priv;
+    /* For AV_OPT_TYPE_STRING options, NULL is handled in other way so
+     * we needn't set default value here
+     */
+    vpp->saturation = 1.0;
+    vpp->contrast = 1.0;
+    vpp->transpose = -1;
+
+    vpp->has_passthrough = 1;
+
+    return 0;
+}
+
 static av_cold int vpp_init(AVFilterContext *ctx)
 {
     VPPContext  *vpp  = ctx->priv;
 
-    if (!strcmp(vpp->output_format_str, "same")) {
+    if (!vpp->output_format_str || !strcmp(vpp->output_format_str, "same")) {
         vpp->out_format = AV_PIX_FMT_NONE;
     } else {
         vpp->out_format = av_get_pix_fmt(vpp->output_format_str);
@@ -259,6 +293,7 @@ static int config_input(AVFilterLink *inlink)
     AVFilterContext *ctx = inlink->dst;
     VPPContext      *vpp = ctx->priv;
     int              ret;
+    int64_t          ow, oh;
 
     if (vpp->framerate.den == 0 || vpp->framerate.num == 0)
         vpp->framerate = inlink->frame_rate;
@@ -272,10 +307,37 @@ static int config_input(AVFilterLink *inlink)
         return ret;
     }
 
-    if (vpp->out_height == 0 || vpp->out_width == 0) {
-        vpp->out_width  = inlink->w;
-        vpp->out_height = inlink->h;
+    ow = vpp->out_width;
+    oh = vpp->out_height;
+
+    /* sanity check params */
+    if (ow <  -1 || oh <  -1) {
+        av_log(ctx, AV_LOG_ERROR, "Size values less than -1 are not acceptable.\n");
+        return AVERROR(EINVAL);
     }
+
+    if (ow == -1 && oh == -1)
+        vpp->out_width = vpp->out_height = 0;
+
+    if (!(ow = vpp->out_width))
+        ow = inlink->w;
+
+    if (!(oh = vpp->out_height))
+        oh = inlink->h;
+
+    if (ow == -1)
+        ow = av_rescale(oh, inlink->w, inlink->h);
+
+    if (oh == -1)
+        oh = av_rescale(ow, inlink->h, inlink->w);
+
+    if (ow > INT_MAX || oh > INT_MAX ||
+        (oh * inlink->w) > INT_MAX  ||
+        (ow * inlink->h) > INT_MAX)
+        av_log(ctx, AV_LOG_ERROR, "Rescaled value for width or height is too big.\n");
+
+    vpp->out_width = ow;
+    vpp->out_height = oh;
 
     if (vpp->use_crop) {
         vpp->crop_x = FFMAX(vpp->crop_x, 0);
@@ -335,7 +397,6 @@ static int config_output(AVFilterLink *outlink)
     param.filter_frame  = NULL;
     param.num_ext_buf   = 0;
     param.ext_buf       = ext_buf;
-    param.async_depth   = vpp->async_depth;
 
     if (get_mfx_version(ctx, &mfx_version) != MFX_ERR_NONE) {
         av_log(ctx, AV_LOG_ERROR, "Failed to query mfx version.\n");
@@ -365,53 +426,44 @@ static int config_output(AVFilterLink *outlink)
         param.crop     = &crop;
     }
 
-    if (vpp->deinterlace) {
-        memset(&vpp->deinterlace_conf, 0, sizeof(mfxExtVPPDeinterlacing));
-        vpp->deinterlace_conf.Header.BufferId = MFX_EXTBUFF_VPP_DEINTERLACING;
-        vpp->deinterlace_conf.Header.BufferSz = sizeof(mfxExtVPPDeinterlacing);
-        vpp->deinterlace_conf.Mode = vpp->deinterlace == 1 ?
-                                     MFX_DEINTERLACING_BOB : MFX_DEINTERLACING_ADVANCED;
+#define INIT_MFX_EXTBUF(extbuf, id) do { \
+        memset(&vpp->extbuf, 0, sizeof(vpp->extbuf)); \
+        vpp->extbuf.Header.BufferId = id; \
+        vpp->extbuf.Header.BufferSz = sizeof(vpp->extbuf); \
+        param.ext_buf[param.num_ext_buf++] = (mfxExtBuffer*)&vpp->extbuf; \
+    } while (0)
 
-        param.ext_buf[param.num_ext_buf++] = (mfxExtBuffer*)&vpp->deinterlace_conf;
+#define SET_MFX_PARAM_FIELD(extbuf, field, value) do { \
+        vpp->extbuf.field = value; \
+    } while (0)
+
+    if (vpp->deinterlace) {
+        INIT_MFX_EXTBUF(deinterlace_conf, MFX_EXTBUFF_VPP_DEINTERLACING);
+        SET_MFX_PARAM_FIELD(deinterlace_conf, Mode, (vpp->deinterlace == 1 ?
+                            MFX_DEINTERLACING_BOB : MFX_DEINTERLACING_ADVANCED));
     }
 
     if (vpp->use_frc) {
-        memset(&vpp->frc_conf, 0, sizeof(mfxExtVPPFrameRateConversion));
-        vpp->frc_conf.Header.BufferId = MFX_EXTBUFF_VPP_FRAME_RATE_CONVERSION;
-        vpp->frc_conf.Header.BufferSz = sizeof(mfxExtVPPFrameRateConversion);
-        vpp->frc_conf.Algorithm = MFX_FRCALGM_DISTRIBUTED_TIMESTAMP;
-
-        param.ext_buf[param.num_ext_buf++] = (mfxExtBuffer*)&vpp->frc_conf;
+        INIT_MFX_EXTBUF(frc_conf, MFX_EXTBUFF_VPP_FRAME_RATE_CONVERSION);
+        SET_MFX_PARAM_FIELD(frc_conf, Algorithm, MFX_FRCALGM_DISTRIBUTED_TIMESTAMP);
     }
 
     if (vpp->denoise) {
-        memset(&vpp->denoise_conf, 0, sizeof(mfxExtVPPDenoise));
-        vpp->denoise_conf.Header.BufferId = MFX_EXTBUFF_VPP_DENOISE;
-        vpp->denoise_conf.Header.BufferSz = sizeof(mfxExtVPPDenoise);
-        vpp->denoise_conf.DenoiseFactor   = vpp->denoise;
-
-        param.ext_buf[param.num_ext_buf++] = (mfxExtBuffer*)&vpp->denoise_conf;
+        INIT_MFX_EXTBUF(denoise_conf, MFX_EXTBUFF_VPP_DENOISE);
+        SET_MFX_PARAM_FIELD(denoise_conf, DenoiseFactor, vpp->denoise);
     }
 
     if (vpp->detail) {
-        memset(&vpp->detail_conf, 0, sizeof(mfxExtVPPDetail));
-        vpp->detail_conf.Header.BufferId  = MFX_EXTBUFF_VPP_DETAIL;
-        vpp->detail_conf.Header.BufferSz  = sizeof(mfxExtVPPDetail);
-        vpp->detail_conf.DetailFactor = vpp->detail;
-
-        param.ext_buf[param.num_ext_buf++] = (mfxExtBuffer*)&vpp->detail_conf;
+        INIT_MFX_EXTBUF(detail_conf, MFX_EXTBUFF_VPP_DETAIL);
+        SET_MFX_PARAM_FIELD(detail_conf, DetailFactor, vpp->detail);
     }
 
     if (vpp->procamp) {
-        memset(&vpp->procamp_conf, 0, sizeof(mfxExtVPPProcAmp));
-        vpp->procamp_conf.Header.BufferId  = MFX_EXTBUFF_VPP_PROCAMP;
-        vpp->procamp_conf.Header.BufferSz  = sizeof(mfxExtVPPProcAmp);
-        vpp->procamp_conf.Hue              = vpp->hue;
-        vpp->procamp_conf.Saturation       = vpp->saturation;
-        vpp->procamp_conf.Contrast         = vpp->contrast;
-        vpp->procamp_conf.Brightness       = vpp->brightness;
-
-        param.ext_buf[param.num_ext_buf++] = (mfxExtBuffer*)&vpp->procamp_conf;
+        INIT_MFX_EXTBUF(procamp_conf, MFX_EXTBUFF_VPP_PROCAMP);
+        SET_MFX_PARAM_FIELD(procamp_conf, Hue, vpp->hue);
+        SET_MFX_PARAM_FIELD(procamp_conf, Saturation, vpp->saturation);
+        SET_MFX_PARAM_FIELD(procamp_conf, Contrast, vpp->contrast);
+        SET_MFX_PARAM_FIELD(procamp_conf, Brightness, vpp->brightness);
     }
 
     if (vpp->transpose >= 0) {
@@ -458,18 +510,14 @@ static int config_output(AVFilterLink *outlink)
 
     if (vpp->rotate) {
         if (QSV_RUNTIME_VERSION_ATLEAST(mfx_version, 1, 17)) {
-            memset(&vpp->rotation_conf, 0, sizeof(mfxExtVPPRotation));
-            vpp->rotation_conf.Header.BufferId  = MFX_EXTBUFF_VPP_ROTATION;
-            vpp->rotation_conf.Header.BufferSz  = sizeof(mfxExtVPPRotation);
-            vpp->rotation_conf.Angle = vpp->rotate;
+            INIT_MFX_EXTBUF(rotation_conf, MFX_EXTBUFF_VPP_ROTATION);
+            SET_MFX_PARAM_FIELD(rotation_conf, Angle, vpp->rotate);
 
             if (MFX_ANGLE_90 == vpp->rotate || MFX_ANGLE_270 == vpp->rotate) {
                 FFSWAP(int, vpp->out_width, vpp->out_height);
                 FFSWAP(int, outlink->w, outlink->h);
                 av_log(ctx, AV_LOG_DEBUG, "Swap width and height for clock/cclock rotation.\n");
             }
-
-            param.ext_buf[param.num_ext_buf++] = (mfxExtBuffer*)&vpp->rotation_conf;
         } else {
             av_log(ctx, AV_LOG_WARNING, "The QSV VPP rotate option is "
                    "not supported with this MSDK version.\n");
@@ -479,12 +527,8 @@ static int config_output(AVFilterLink *outlink)
 
     if (vpp->hflip) {
         if (QSV_RUNTIME_VERSION_ATLEAST(mfx_version, 1, 19)) {
-            memset(&vpp->mirroring_conf, 0, sizeof(mfxExtVPPMirroring));
-            vpp->mirroring_conf.Header.BufferId = MFX_EXTBUFF_VPP_MIRRORING;
-            vpp->mirroring_conf.Header.BufferSz = sizeof(mfxExtVPPMirroring);
-            vpp->mirroring_conf.Type = vpp->hflip;
-
-            param.ext_buf[param.num_ext_buf++] = (mfxExtBuffer*)&vpp->mirroring_conf;
+            INIT_MFX_EXTBUF(mirroring_conf, MFX_EXTBUFF_VPP_MIRRORING);
+            SET_MFX_PARAM_FIELD(mirroring_conf, Type, vpp->hflip);
         } else {
             av_log(ctx, AV_LOG_WARNING, "The QSV VPP hflip option is "
                    "not supported with this MSDK version.\n");
@@ -492,24 +536,25 @@ static int config_output(AVFilterLink *outlink)
         }
     }
 
-    if (inlink->w != outlink->w || inlink->h != outlink->h) {
+    if (inlink->w != outlink->w || inlink->h != outlink->h || in_format != vpp->out_format) {
         if (QSV_RUNTIME_VERSION_ATLEAST(mfx_version, 1, 19)) {
-            memset(&vpp->scale_conf, 0, sizeof(mfxExtVPPScaling));
-            vpp->scale_conf.Header.BufferId    = MFX_EXTBUFF_VPP_SCALING;
-            vpp->scale_conf.Header.BufferSz    = sizeof(mfxExtVPPScaling);
-            vpp->scale_conf.ScalingMode        = vpp->scale_mode;
-
-            param.ext_buf[param.num_ext_buf++] = (mfxExtBuffer*)&vpp->scale_conf;
+            INIT_MFX_EXTBUF(scale_conf, MFX_EXTBUFF_VPP_SCALING);
+            SET_MFX_PARAM_FIELD(scale_conf, ScalingMode, vpp->scale_mode);
         } else
-            av_log(ctx, AV_LOG_WARNING, "The QSV VPP Scale option is "
-                "not supported with this MSDK version.\n");
+            av_log(ctx, AV_LOG_WARNING, "The QSV VPP Scale & format conversion "
+                   "option is not supported with this MSDK version.\n");
     }
+
+#undef INIT_MFX_EXTBUF
+#undef SET_MFX_PARAM_FIELD
 
     if (vpp->use_frc || vpp->use_crop || vpp->deinterlace || vpp->denoise ||
         vpp->detail || vpp->procamp || vpp->rotate || vpp->hflip ||
-        inlink->w != outlink->w || inlink->h != outlink->h || in_format != vpp->out_format)
-        return ff_qsvvpp_create(ctx, &vpp->qsv, &param);
+        inlink->w != outlink->w || inlink->h != outlink->h || in_format != vpp->out_format ||
+        !vpp->has_passthrough)
+        return ff_qsvvpp_init(ctx, &param);
     else {
+        /* No MFX session is created in this case */
         av_log(ctx, AV_LOG_VERBOSE, "qsv vpp pass through mode.\n");
         if (inlink->hw_frames_ctx)
             outlink->hw_frames_ctx = av_buffer_ref(inlink->hw_frames_ctx);
@@ -522,29 +567,27 @@ static int activate(AVFilterContext *ctx)
 {
     AVFilterLink *inlink = ctx->inputs[0];
     AVFilterLink *outlink = ctx->outputs[0];
-    VPPContext *s =ctx->priv;
-    QSVVPPContext *qsv = s->qsv;
+    QSVVPPContext *qsv = ctx->priv;
     AVFrame *in = NULL;
     int ret, status = 0;
     int64_t pts = AV_NOPTS_VALUE;
 
     FF_FILTER_FORWARD_STATUS_BACK(outlink, inlink);
 
-    if (!s->eof) {
+    if (!qsv->eof) {
         ret = ff_inlink_consume_frame(inlink, &in);
         if (ret < 0)
             return ret;
 
         if (ff_inlink_acknowledge_status(inlink, &status, &pts)) {
             if (status == AVERROR_EOF) {
-                s->eof = 1;
+                qsv->eof = 1;
             }
         }
     }
 
-    if (qsv) {
-        if (in || s->eof) {
-            qsv->eof = s->eof;
+    if (qsv->session) {
+        if (in || qsv->eof) {
             ret = ff_qsvvpp_filter_frame(qsv, inlink, in);
             av_frame_free(&in);
             if (ret == AVERROR(EAGAIN))
@@ -552,7 +595,7 @@ static int activate(AVFilterContext *ctx)
             else if (ret < 0)
                 return ret;
 
-            if (s->eof)
+            if (qsv->eof)
                 goto eof;
 
             if (qsv->got_frame) {
@@ -561,6 +604,7 @@ static int activate(AVFilterContext *ctx)
             }
         }
     } else {
+        /* No MFX session is created in pass-through mode */
         if (in) {
             if (in->pts != AV_NOPTS_VALUE)
                 in->pts = av_rescale_q(in->pts, inlink->time_base, outlink->time_base);
@@ -569,7 +613,7 @@ static int activate(AVFilterContext *ctx)
             if (ret < 0)
                 return ret;
 
-            if (s->eof)
+            if (qsv->eof)
                 goto eof;
 
             return 0;
@@ -577,7 +621,7 @@ static int activate(AVFilterContext *ctx)
     }
 
 not_ready:
-    if (s->eof)
+    if (qsv->eof)
         goto eof;
 
     FF_FILTER_FORWARD_WANTED(outlink, inlink);
@@ -597,6 +641,7 @@ static int query_formats(AVFilterContext *ctx)
         AV_PIX_FMT_NV12,
         AV_PIX_FMT_YUYV422,
         AV_PIX_FMT_RGB32,
+        AV_PIX_FMT_P010,
         AV_PIX_FMT_QSV,
         AV_PIX_FMT_NONE
     };
@@ -617,9 +662,7 @@ static int query_formats(AVFilterContext *ctx)
 
 static av_cold void vpp_uninit(AVFilterContext *ctx)
 {
-    VPPContext *vpp = ctx->priv;
-
-    ff_qsvvpp_free(&vpp->qsv);
+    ff_qsvvpp_close(ctx);
 }
 
 static const AVClass vpp_class = {
@@ -634,6 +677,7 @@ static const AVFilterPad vpp_inputs[] = {
         .name          = "default",
         .type          = AVMEDIA_TYPE_VIDEO,
         .config_props  = config_input,
+        .get_buffer.video = ff_qsvvpp_get_video_buffer,
     },
 };
 
@@ -649,6 +693,7 @@ const AVFilter ff_vf_vpp_qsv = {
     .name          = "vpp_qsv",
     .description   = NULL_IF_CONFIG_SMALL("Quick Sync Video VPP."),
     .priv_size     = sizeof(VPPContext),
+    .preinit       = vpp_preinit,
     .init          = vpp_init,
     .uninit        = vpp_uninit,
     FILTER_INPUTS(vpp_inputs),

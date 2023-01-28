@@ -26,6 +26,7 @@
 #include "libavutil/internal.h"
 #include "libavutil/opt.h"
 
+#include "atsc_a53.h"
 #include "avcodec.h"
 #include "cbs.h"
 #include "cbs_h264.h"
@@ -33,6 +34,7 @@
 #include "h264.h"
 #include "h264_levels.h"
 #include "h264_sei.h"
+#include "h2645data.h"
 #include "vaapi_encode.h"
 #include "version.h"
 
@@ -40,6 +42,7 @@ enum {
     SEI_TIMING         = 0x01,
     SEI_IDENTIFIER     = 0x02,
     SEI_RECOVERY_POINT = 0x04,
+    SEI_A53_CC         = 0x08,
 };
 
 // Random (version 4) ISO 11578 UUID.
@@ -98,6 +101,8 @@ typedef struct VAAPIEncodeH264Context {
     H264RawSEIRecoveryPoint        sei_recovery_point;
     SEIRawUserDataUnregistered     sei_identifier;
     char                          *sei_identifier_string;
+    SEIRawUserDataRegistered       sei_a53cc;
+    void                          *sei_a53cc_data;
 
     int aud_needed;
     int sei_needed;
@@ -248,6 +253,13 @@ static int vaapi_encode_h264_write_extra_header(AVCodecContext *avctx,
             if (err < 0)
                 goto fail;
         }
+        if (priv->sei_needed & SEI_A53_CC) {
+            err = ff_cbs_sei_add_message(priv->cbc, au, 1,
+                                         SEI_TYPE_USER_DATA_REGISTERED_ITU_T_T35,
+                                         &priv->sei_a53cc, NULL);
+            if (err < 0)
+                goto fail;
+        }
 
         priv->sei_needed = 0;
 
@@ -378,24 +390,17 @@ static int vaapi_encode_h264_init_sequence_params(AVCodecContext *avctx)
 
     if (avctx->sample_aspect_ratio.num != 0 &&
         avctx->sample_aspect_ratio.den != 0) {
-        static const AVRational sar_idc[] = {
-            {   0,  0 },
-            {   1,  1 }, {  12, 11 }, {  10, 11 }, {  16, 11 },
-            {  40, 33 }, {  24, 11 }, {  20, 11 }, {  32, 11 },
-            {  80, 33 }, {  18, 11 }, {  15, 11 }, {  64, 33 },
-            { 160, 99 }, {   4,  3 }, {   3,  2 }, {   2,  1 },
-        };
         int num, den, i;
         av_reduce(&num, &den, avctx->sample_aspect_ratio.num,
                   avctx->sample_aspect_ratio.den, 65535);
-        for (i = 0; i < FF_ARRAY_ELEMS(sar_idc); i++) {
-            if (num == sar_idc[i].num &&
-                den == sar_idc[i].den) {
+        for (i = 0; i < FF_ARRAY_ELEMS(ff_h2645_pixel_aspect); i++) {
+            if (num == ff_h2645_pixel_aspect[i].num &&
+                den == ff_h2645_pixel_aspect[i].den) {
                 sps->vui.aspect_ratio_idc = i;
                 break;
             }
         }
-        if (i >= FF_ARRAY_ELEMS(sar_idc)) {
+        if (i >= FF_ARRAY_ELEMS(ff_h2645_pixel_aspect)) {
             sps->vui.aspect_ratio_idc = 255;
             sps->vui.sar_width  = num;
             sps->vui.sar_height = den;
@@ -679,6 +684,22 @@ static int vaapi_encode_h264_init_picture_params(AVCodecContext *avctx,
         };
 
         priv->sei_needed |= SEI_RECOVERY_POINT;
+    }
+
+    if (priv->sei & SEI_A53_CC) {
+        int err;
+        size_t sei_a53cc_len;
+        av_freep(&priv->sei_a53cc_data);
+        err = ff_alloc_a53_sei(pic->input_image, 0, &priv->sei_a53cc_data, &sei_a53cc_len);
+        if (err < 0)
+            return err;
+        if (priv->sei_a53cc_data != NULL) {
+            priv->sei_a53cc.itu_t_t35_country_code = 181;
+            priv->sei_a53cc.data = (uint8_t *)priv->sei_a53cc_data + 1;
+            priv->sei_a53cc.data_length = sei_a53cc_len - 1;
+
+            priv->sei_needed |= SEI_A53_CC;
+        }
     }
 
     vpic->CurrPic = (VAPictureH264) {
@@ -1226,6 +1247,7 @@ static av_cold int vaapi_encode_h264_close(AVCodecContext *avctx)
     ff_cbs_fragment_free(&priv->current_access_unit);
     ff_cbs_close(&priv->cbc);
     av_freep(&priv->sei_identifier_string);
+    av_freep(&priv->sei_a53cc_data);
 
     return ff_vaapi_encode_close(avctx);
 }
@@ -1252,7 +1274,7 @@ static const AVOption vaapi_encode_h264_options[] = {
 
     { "sei", "Set SEI to include",
       OFFSET(sei), AV_OPT_TYPE_FLAGS,
-      { .i64 = SEI_IDENTIFIER | SEI_TIMING | SEI_RECOVERY_POINT },
+      { .i64 = SEI_IDENTIFIER | SEI_TIMING | SEI_RECOVERY_POINT | SEI_A53_CC },
       0, INT_MAX, FLAGS, "sei" },
     { "identifier", "Include encoder version identifier",
       0, AV_OPT_TYPE_CONST, { .i64 = SEI_IDENTIFIER },
@@ -1262,6 +1284,9 @@ static const AVOption vaapi_encode_h264_options[] = {
       INT_MIN, INT_MAX, FLAGS, "sei" },
     { "recovery_point", "Include recovery points where appropriate",
       0, AV_OPT_TYPE_CONST, { .i64 = SEI_RECOVERY_POINT },
+      INT_MIN, INT_MAX, FLAGS, "sei" },
+    { "a53_cc", "Include A/53 caption data",
+      0, AV_OPT_TYPE_CONST, { .i64 = SEI_A53_CC },
       INT_MIN, INT_MAX, FLAGS, "sei" },
 
     { "profile", "Set profile (profile_idc and constraint_set*_flag)",
