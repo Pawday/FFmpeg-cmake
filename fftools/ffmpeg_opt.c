@@ -95,7 +95,6 @@ static int no_file_overwrite  = 0;
 #if FFMPEG_OPT_PSNR
 int do_psnr            = 0;
 #endif
-int input_stream_potentially_available = 0;
 int ignore_unknown_streams = 0;
 int copy_unknown_streams = 0;
 int recast_media = 0;
@@ -165,12 +164,12 @@ static int show_hwaccels(void *optctx, const char *opt, const char *arg)
 }
 
 /* return a copy of the input with the stream specifiers removed from the keys */
-AVDictionary *strip_specifiers(AVDictionary *dict)
+AVDictionary *strip_specifiers(const AVDictionary *dict)
 {
     const AVDictionaryEntry *e = NULL;
     AVDictionary    *ret = NULL;
 
-    while ((e = av_dict_get(dict, "", e, AV_DICT_IGNORE_SUFFIX))) {
+    while ((e = av_dict_iterate(dict, e))) {
         char *p = strchr(e->key, ':');
 
         if (p)
@@ -418,7 +417,7 @@ static int opt_map(void *optctx, const char *opt, const char *arg)
                 if (check_stream_specifier(input_files[file_idx]->ctx, input_files[file_idx]->ctx->streams[i],
                             *p == ':' ? p + 1 : p) <= 0)
                     continue;
-                if (input_streams[input_files[file_idx]->ist_index + i]->user_set_discard == AVDISCARD_ALL) {
+                if (input_files[file_idx]->streams[i]->user_set_discard == AVDISCARD_ALL) {
                     disabled = 1;
                     continue;
                 }
@@ -524,7 +523,7 @@ static int opt_map_channel(void *optctx, const char *opt, const char *arg)
     if (allow_unused = strchr(mapchan, '?'))
         *allow_unused = 0;
     if (m->channel_idx < 0 || m->channel_idx >= st->codecpar->ch_layout.nb_channels ||
-        input_streams[input_files[m->file_idx]->ist_index + m->stream_idx]->user_set_discard == AVDISCARD_ALL) {
+        input_files[m->file_idx]->streams[m->stream_idx]->user_set_discard == AVDISCARD_ALL) {
         if (allow_unused) {
             av_log(NULL, AV_LOG_VERBOSE, "mapchan: invalid audio channel #%d.%d.%d\n",
                     m->file_idx, m->stream_idx, m->channel_idx);
@@ -1114,8 +1113,6 @@ static int opt_filter_complex(void *optctx, const char *opt, const char *arg)
     if (!fg->graph_desc)
         return AVERROR(ENOMEM);
 
-    input_stream_potentially_available = 1;
-
     return 0;
 }
 
@@ -1129,8 +1126,6 @@ static int opt_filter_complex_script(void *optctx, const char *opt, const char *
     fg = ALLOC_ARRAY_ELEM(filtergraphs, nb_filtergraphs);
     fg->index      = nb_filtergraphs - 1;
     fg->graph_desc = graph_desc;
-
-    input_stream_potentially_available = 1;
 
     return 0;
 }
@@ -1225,7 +1220,7 @@ static const OptionGroupDef groups[] = {
 };
 
 static int open_files(OptionGroupList *l, const char *inout,
-                      int (*open_file)(OptionsContext*, const char*))
+                      int (*open_file)(const OptionsContext*, const char*))
 {
     int i, ret;
 

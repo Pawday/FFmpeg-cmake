@@ -537,6 +537,8 @@ static void dump_video_av1_param(AVCodecContext *avctx, QSVEncContext *q,
 
     av_log(avctx, AV_LOG_VERBOSE, "WriteIVFHeaders: %s \n",
            print_threestate(av1_bs_param->WriteIVFHeaders));
+    av_log(avctx, AV_LOG_VERBOSE, "LowDelayBRC: %s\n", print_threestate(co3->LowDelayBRC));
+    av_log(avctx, AV_LOG_VERBOSE, "MaxFrameSize: %d;\n", co2->MaxFrameSize);
 }
 #endif
 
@@ -642,6 +644,12 @@ static int check_enc_param(AVCodecContext *avctx, QSVEncContext *q)
         return 0;
     }
     return 1;
+}
+
+static int is_strict_gop(QSVEncContext *q) {
+    if (q->adaptive_b == 0 && q->adaptive_i == 0)
+        return 1;
+    return 0;
 }
 
 static int init_video_param_jpeg(AVCodecContext *avctx, QSVEncContext *q)
@@ -755,7 +763,8 @@ static int init_video_param(AVCodecContext *avctx, QSVEncContext *q)
     q->old_gop_size                 = avctx->gop_size;
     q->param.mfx.GopRefDist         = FFMAX(-1, avctx->max_b_frames) + 1;
     q->param.mfx.GopOptFlag         = avctx->flags & AV_CODEC_FLAG_CLOSED_GOP ?
-                                      MFX_GOP_CLOSED : MFX_GOP_STRICT;
+                                      MFX_GOP_CLOSED : is_strict_gop(q) ?
+                                      MFX_GOP_STRICT : 0;
     q->param.mfx.IdrInterval        = q->idr_interval;
     q->param.mfx.NumSlice           = avctx->slices;
     q->param.mfx.NumRefFrame        = FFMAX(0, avctx->refs);
@@ -1026,6 +1035,8 @@ static int init_video_param(AVCodecContext *avctx, QSVEncContext *q)
                 q->extco2.AdaptiveI = q->adaptive_i ? MFX_CODINGOPTION_ON : MFX_CODINGOPTION_OFF;
             if (q->adaptive_b >= 0)
                 q->extco2.AdaptiveB = q->adaptive_b ? MFX_CODINGOPTION_ON : MFX_CODINGOPTION_OFF;
+            if (q->max_frame_size >= 0)
+                q->extco2.MaxFrameSize = q->max_frame_size;
 
             q->extco2.Header.BufferId = MFX_EXTBUFF_CODING_OPTION2;
             q->extco2.Header.BufferSz = sizeof(q->extco2);
@@ -1083,6 +1094,9 @@ static int init_video_param(AVCodecContext *avctx, QSVEncContext *q)
                 q->extco3.MaxFrameSizeP = q->max_frame_size_p;
 
             q->extco3.ScenarioInfo = q->scenario;
+        } else if (avctx->codec_id == AV_CODEC_ID_AV1) {
+            if (q->low_delay_brc >= 0)
+                q->extco3.LowDelayBRC = q->low_delay_brc ? MFX_CODINGOPTION_ON : MFX_CODINGOPTION_OFF;
         }
 
         if (avctx->codec_id == AV_CODEC_ID_HEVC) {

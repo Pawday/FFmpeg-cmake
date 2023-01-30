@@ -20,6 +20,9 @@
  */
 
 #include <stdatomic.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #include "libavformat/internal.h"
 #include "avformat.h"
 
@@ -476,6 +479,7 @@ extern const AVInputFormat  ff_vplayer_demuxer;
 extern const AVInputFormat  ff_vqf_demuxer;
 extern const AVInputFormat  ff_w64_demuxer;
 extern const AVOutputFormat ff_w64_muxer;
+extern const AVInputFormat  ff_wady_demuxer;
 extern const AVInputFormat  ff_wav_demuxer;
 extern const AVOutputFormat ff_wav_muxer;
 extern const AVInputFormat  ff_wc3_demuxer;
