@@ -279,9 +279,7 @@ static inline int decode_simple_internal(AVCodecContext *avctx, AVFrame *frame, 
 
     got_frame = 0;
 
-    if (HAVE_THREADS && avctx->active_thread_type & FF_THREAD_FRAME) {
-        ret = ff_thread_decode_frame(avctx, frame, &got_frame, pkt);
-    } else {
+    if (!(HAVE_THREADS && avctx->active_thread_type & FF_THREAD_FRAME)) {
         ret = codec->cb.decode(avctx, frame, &got_frame, pkt);
 
         if (!(codec->caps_internal & FF_CODEC_CAP_SETS_PKT_DTS))
@@ -299,6 +297,11 @@ static inline int decode_simple_internal(AVCodecContext *avctx, AVFrame *frame, 
             }
         }
     }
+#if HAVE_THREADS
+    else {
+        ret = ff_thread_decode_frame(avctx, frame, &got_frame, pkt);
+    }
+#endif
     emms_c();
     actual_got_frame = got_frame;
 

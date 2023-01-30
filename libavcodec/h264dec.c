@@ -933,13 +933,13 @@ static int finalize_frame(H264Context *h, AVFrame *dst, H264Picture *out, int *g
 
         *got_frame = 1;
 
-        if (CONFIG_MPEGVIDEODEC) {
-            ff_print_debug_info2(h->avctx, dst, NULL,
-                                 out->mb_type,
-                                 out->qscale_table,
-                                 out->motion_val,
-                                 out->mb_width, out->mb_height, out->mb_stride, 1);
-        }
+#if CONFIG_MPEGVIDEODEC
+        ff_print_debug_info2(h->avctx, dst, NULL,
+                             out->mb_type,
+                             out->qscale_table,
+                             out->motion_val,
+                             out->mb_width, out->mb_height, out->mb_stride, 1);
+#endif
     }
 
     return 0;
