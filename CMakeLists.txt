@@ -178,7 +178,7 @@ target_include_directories(ffmpeg_config INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/i
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/include/config_components.h "//")
 target_include_directories(ffmpeg_config INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/include)
 
-add_subdirectory(compat)
+
 add_subdirectory(libavutil)
 add_subdirectory(libavcodec)
 add_subdirectory(libavformat)

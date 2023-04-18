@@ -1,10 +1,32 @@
 cmake_minimum_required(VERSION 3.15)
 project(avutil)
 
+set(FF_COMPAT_DIR_FOR_AVUTILS ${CMAKE_SOURCE_DIR}/compat)
+set(FF_CMAKE_MODULES_FOR_AVUTILS ${CMAKE_SOURCE_DIR}/cmake)
+
+include(${FF_CMAKE_MODULES_FOR_AVUTILS}/DummyConfigHeader.cmake)
+include(${FF_COMPAT_DIR_FOR_AVUTILS}/cmake/FFCompat.cmake)
+
+
 #avutil_config - all macro for libavconfig target
 add_library(avutil_config INTERFACE)
+add_library(avutil_deps INTERFACE)
 
+FFCompatInjectAtomicsDummyHeadersToTarget(avutil_deps INTERFACE)
+InjectDummyConfigHeaderForTarget(avutil_config INTERFACE)
 
+# SOURCE_FILE_NAME -> PATCHED_${SOURCE_FILE_NAME}
+function(FFUtilPatchFileTop SOURCE_FILE_NAME CONTENT_ON_TOP PATCHED_OUTPUT_FILE_LOCATION)
+    set(PATCHED_FILE ${CMAKE_CURRENT_BINARY_DIR}/patched/PATCHED_${SOURCE_FILE_NAME})
+
+    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_FILE_NAME} SOURCE_FILE_CONTENT)
+    string(APPEND PATCHED_SOURCE_FILE_CONTENT ${CONTENT_ON_TOP} "\n")
+    string(APPEND PATCHED_SOURCE_FILE_CONTENT ${SOURCE_FILE_CONTENT})
+
+    set(${PATCHED_OUTPUT_FILE_LOCATION} ${PATCHED_FILE} PARENT_SCOPE)
+
+    file(GENERATE OUTPUT ${PATCHED_FILE} CONTENT "${PATCHED_SOURCE_FILE_CONTENT}")
+endfunction()
 
 list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "HAVE_MMX2")
 list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "HAVE_MMXEXT")
@@ -17,6 +39,27 @@ list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "ARCH_ARM")
 list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "ARCH_PPC")
 list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "ARCH_X86")
 list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "ARCH_LOONGARCH")
+
+list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "HAVE_MMX2" "0")
+list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "HAVE_MMXEXT" "0" )
+list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "FFMPEG_LICENSE" "\"LICECECECE FOR AVUTIL\"")
+list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "FFMPEG_CONFIGURATION" "\"CMAKED\"")
+list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "CONFIG_MEMORY_POISONING" "0")
+list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "ARCH_MIPS" "0")
+list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "ARCH_AARCH64" "0")
+list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "ARCH_ARM" "0")
+list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "ARCH_PPC" "0")
+list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "ARCH_X86" "0")
+list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "ARCH_LOONGARCH" "0")
+
+
+foreach(FF_UTIL_CONFIG_MACRO_NAME ${FF_AVUTIL_REQUIRED_MACRO_LIST})
+    list(FIND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES ${FF_UTIL_CONFIG_MACRO_NAME} CONFIG_INDEX)
+    math(EXPR CONFIG_INDEX "${CONFIG_INDEX} + 1")
+    list(GET FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES ${CONFIG_INDEX} CONFIG_VALUE)
+    target_compile_definitions(avutil_config INTERFACE ${FF_UTIL_CONFIG_MACRO_NAME}=${CONFIG_VALUE})
+endforeach()
+
 
 # Checking math functions
 include(CheckSymbolExists)
@@ -76,7 +119,7 @@ endforeach()
 
 
 
-#TODO[cmake]: when install will come, generate ffversion.h and avconfig.h only for install
+#TODO[cmake]: when install generate ffversion.h and avconfig.h (only for install)
 
 #GENERATING ffversion.h
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "//configured via cmake\n")
@@ -178,20 +221,43 @@ list(APPEND AVUTIL_SOURCES samplefmt.c)
 list(APPEND AVUTIL_SOURCES utils.c)
 list(APPEND AVUTIL_SOURCES buffer.c)
 list(APPEND AVUTIL_SOURCES dict.c)
-list(APPEND AVUTIL_SOURCES frame.c)
+
+#TODO: [avutil PATCHED_frame.c] Wait for ffdev add "#include internal.h" to frame.c
+FFUtilPatchFileTop(frame.c "#include <libavutil/internal.h>" FRAME_C_PATCHED)
+#list(APPEND AVUTIL_SOURCES frame.c)
+list(APPEND AVUTIL_SOURCES ${FRAME_C_PATCHED})
+
 list(APPEND AVUTIL_SOURCES log.c)
 list(APPEND AVUTIL_SOURCES rational.c)
 list(APPEND AVUTIL_SOURCES avstring.c)
 list(APPEND AVUTIL_SOURCES bprint.c)
-list(APPEND AVUTIL_SOURCES channel_layout.c)
+
+
+#TODO: [avutil PATCHED_channel_layout.c] Wait for ffdev add "#include internal.h" to opt.c
+FFUtilPatchFileTop(channel_layout.c "#include <libavutil/internal.h>" CHANNEL_LAYOUT_PATCHED)
+#list(APPEND AVUTIL_SOURCES channel_layout.c)
+list(APPEND AVUTIL_SOURCES ${CHANNEL_LAYOUT_PATCHED})
+
 list(APPEND AVUTIL_SOURCES imgutils.c)
 list(APPEND AVUTIL_SOURCES mem.c)
-list(APPEND AVUTIL_SOURCES opt.c)
+
+
+#TODO: [avutil PATCHED_opt.c] Wait for ffdev add "#include internal.h" to opt.c
+FFUtilPatchFileTop(opt.c "#include <libavutil/internal.h>" OPT_C_PATCHED)
+#list(APPEND AVUTIL_SOURCES opt.c)
+list(APPEND AVUTIL_SOURCES ${OPT_C_PATCHED})
+
 list(APPEND AVUTIL_SOURCES error.c)
 list(APPEND AVUTIL_SOURCES mathematics.c)
 list(APPEND AVUTIL_SOURCES pixdesc.c)
 list(APPEND AVUTIL_SOURCES hwcontext.c)
-list(APPEND AVUTIL_SOURCES fifo.c)
+
+
+#TODO: [avutil PATCHED_fifo.c] Wait for ffdev add "#include internal.h" to fifo.c
+FFUtilPatchFileTop(fifo.c "#include <libavutil/internal.h>" FIFO_C_PATCHED)
+#list(APPEND AVUTIL_SOURCES fifo.c)
+list(APPEND AVUTIL_SOURCES ${FIFO_C_PATCHED})
+
 list(APPEND AVUTIL_SOURCES intmath.c)
 list(APPEND AVUTIL_SOURCES log2_tab.c)
 list(APPEND AVUTIL_SOURCES eval.c)
@@ -256,13 +322,14 @@ if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 add_library(avutil OBJECT ${AVUTIL_SOURCES})
-target_link_libraries(avutil PRIVATE ffmpeg_compat)
-target_link_libraries(avutil PUBLIC avutil_config)
+target_link_libraries(avutil PRIVATE avutil_config)
+target_link_libraries(avutil PRIVATE avutil_deps)
 
 if(MSVC)
     message(WARNING "AVUTIL: adding empty_functions.c hack for unoptimised MSVC")
     target_sources(avutil PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c)
 endif()
+
 
 
 
@@ -296,7 +363,7 @@ target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/aarch64/inc
 target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/loongarch/include)
 
 
-target_link_libraries(avutil PRIVATE ffmpeg_config)
+
 
 
 add_library(avutil_static STATIC $<TARGET_OBJECTS:avutil>)
