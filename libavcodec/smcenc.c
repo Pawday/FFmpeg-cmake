@@ -542,7 +542,7 @@ static int smc_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
         return ret;
 
     if (avctx->gop_size == 0 || !s->prev_frame->data[0] ||
-        (avctx->frame_number % avctx->gop_size) == 0) {
+        (avctx->frame_num % avctx->gop_size) == 0) {
         s->key_frame = 1;
     } else {
         s->key_frame = 0;
@@ -566,8 +566,7 @@ static int smc_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     // write chunk length
     AV_WB24(pkt->data + 1, pkt->size);
 
-    av_frame_unref(s->prev_frame);
-    ret = av_frame_ref(s->prev_frame, frame);
+    ret = av_frame_replace(s->prev_frame, frame);
     if (ret < 0) {
         av_log(avctx, AV_LOG_ERROR, "cannot add reference\n");
         return ret;
@@ -583,7 +582,7 @@ static int smc_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
 
 static int smc_encode_end(AVCodecContext *avctx)
 {
-    SMCContext *s = (SMCContext *)avctx->priv_data;
+    SMCContext *s = avctx->priv_data;
 
     av_frame_free(&s->prev_frame);
 
@@ -595,7 +594,7 @@ const FFCodec ff_smc_encoder = {
     CODEC_LONG_NAME("QuickTime Graphics (SMC)"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_SMC,
-    .p.capabilities = AV_CODEC_CAP_DR1,
+    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE,
     .priv_data_size = sizeof(SMCContext),
     .init           = smc_encode_init,
     FF_CODEC_ENCODE_CB(smc_encode_frame),

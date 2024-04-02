@@ -24,9 +24,12 @@
 
 #include "libavutil/avassert.h"
 #include "libavutil/cpu.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 #include "libavutil/thread.h"
 #include "avcodec.h"
+#include "avcodec_internal.h"
+#include "codec_par.h"
 #include "encode.h"
 #include "internal.h"
 #include "pthread_internal.h"
@@ -48,9 +51,6 @@ typedef struct{
 
 typedef struct{
     AVCodecContext *parent_avctx;
-#if FF_API_THREAD_SAFE_CALLBACKS
-    pthread_mutex_t buffer_mutex;
-#endif
 
     pthread_mutex_t task_fifo_mutex; /* Used to guard (next_)task_index */
     pthread_cond_t task_fifo_cond;
@@ -70,15 +70,9 @@ typedef struct{
 } ThreadContext;
 
 #define OFF(member) offsetof(ThreadContext, member)
-#if FF_API_THREAD_SAFE_CALLBACKS
-DEFINE_OFFSET_ARRAY(ThreadContext, thread_ctx, pthread_init_cnt,
-                    (OFF(buffer_mutex), OFF(task_fifo_mutex), OFF(finished_task_mutex)),
-                    (OFF(task_fifo_cond), OFF(finished_task_cond)));
-#else
 DEFINE_OFFSET_ARRAY(ThreadContext, thread_ctx, pthread_init_cnt,
                     (OFF(task_fifo_mutex), OFF(finished_task_mutex)),
                     (OFF(task_fifo_cond),  OFF(finished_task_cond)));
-#endif
 #undef OFF
 
 static void * attribute_align_arg worker(void *v){
@@ -112,11 +106,6 @@ static void * attribute_align_arg worker(void *v){
         pkt   = task->outdata;
 
         ret = ff_encode_encode_cb(avctx, pkt, frame, &task->got_packet);
-#if FF_API_THREAD_SAFE_CALLBACKS
-        pthread_mutex_lock(&c->buffer_mutex);
-        av_frame_unref(frame);
-        pthread_mutex_unlock(&c->buffer_mutex);
-#endif
         pthread_mutex_lock(&c->finished_task_mutex);
         task->return_code = ret;
         task->finished    = 1;
@@ -124,14 +113,7 @@ static void * attribute_align_arg worker(void *v){
         pthread_mutex_unlock(&c->finished_task_mutex);
     }
 end:
-#if FF_API_THREAD_SAFE_CALLBACKS
-    pthread_mutex_lock(&c->buffer_mutex);
-#endif
-    avcodec_close(avctx);
-#if FF_API_THREAD_SAFE_CALLBACKS
-    pthread_mutex_unlock(&c->buffer_mutex);
-#endif
-    av_freep(&avctx);
+    avcodec_free_context(&avctx);
     return NULL;
 }
 
@@ -140,6 +122,7 @@ av_cold int ff_frame_thread_encoder_init(AVCodecContext *avctx)
     int i=0;
     ThreadContext *c;
     AVCodecContext *thread_avctx = NULL;
+    AVCodecParameters *par = NULL;
     int ret;
 
     if(   !(avctx->thread_type & FF_THREAD_FRAME)
@@ -213,18 +196,27 @@ av_cold int ff_frame_thread_encoder_init(AVCodecContext *avctx)
         }
     }
 
+    par = avcodec_parameters_alloc();
+    if (!par) {
+        ret = AVERROR(ENOMEM);
+        goto fail;
+    }
+
+    ret = avcodec_parameters_from_context(par, avctx);
+    if (ret < 0)
+        goto fail;
+
     for(i=0; i<avctx->thread_count ; i++){
-        void *tmpv;
         thread_avctx = avcodec_alloc_context3(avctx->codec);
         if (!thread_avctx) {
             ret = AVERROR(ENOMEM);
             goto fail;
         }
-        tmpv = thread_avctx->priv_data;
-        *thread_avctx = *avctx;
-        thread_avctx->priv_data = tmpv;
-        thread_avctx->internal = NULL;
-        thread_avctx->hw_frames_ctx = NULL;
+
+        ret = avcodec_parameters_to_context(thread_avctx, par);
+        if (ret < 0)
+            goto fail;
+
         ret = av_opt_copy(thread_avctx, avctx);
         if (ret < 0)
             goto fail;
@@ -236,6 +228,26 @@ av_cold int ff_frame_thread_encoder_init(AVCodecContext *avctx)
         thread_avctx->thread_count = 1;
         thread_avctx->active_thread_type &= ~FF_THREAD_FRAME;
 
+#define DUP_MATRIX(m)                                                       \
+        if (avctx->m) {                                                     \
+            thread_avctx->m = av_memdup(avctx->m, 64 * sizeof(*avctx->m));  \
+            if (!thread_avctx->m) {                                         \
+                ret = AVERROR(ENOMEM);                                      \
+                goto fail;                                                  \
+            }                                                               \
+        }
+        DUP_MATRIX(intra_matrix);
+        DUP_MATRIX(chroma_intra_matrix);
+        DUP_MATRIX(inter_matrix);
+
+#undef DUP_MATRIX
+
+        thread_avctx->opaque            = avctx->opaque;
+        thread_avctx->get_encode_buffer = avctx->get_encode_buffer;
+        thread_avctx->execute           = avctx->execute;
+        thread_avctx->execute2          = avctx->execute2;
+        thread_avctx->stats_in          = avctx->stats_in;
+
         if ((ret = avcodec_open2(thread_avctx, avctx->codec, NULL)) < 0)
             goto fail;
         av_assert0(!thread_avctx->internal->frame_thread_encoder);
@@ -246,12 +258,14 @@ av_cold int ff_frame_thread_encoder_init(AVCodecContext *avctx)
         }
     }
 
+    avcodec_parameters_free(&par);
+
     avctx->active_thread_type = FF_THREAD_FRAME;
 
     return 0;
 fail:
-    avcodec_close(thread_avctx);
-    av_freep(&thread_avctx);
+    avcodec_parameters_free(&par);
+    avcodec_free_context(&thread_avctx);
     avctx->thread_count = i;
     av_log(avctx, AV_LOG_ERROR, "ff_frame_thread_encoder_init failed\n");
     ff_frame_thread_encoder_free(avctx);

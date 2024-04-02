@@ -31,6 +31,7 @@
 #include "libavutil/avassert.h"
 #include "libavutil/imgutils.h"
 #include "libavutil/internal.h"
+#include "libavutil/mem.h"
 
 #include "avcodec.h"
 #include "blockdsp.h"
@@ -632,7 +633,6 @@ static void clear_context(MpegEncContext *s)
     memset(&s->next_picture, 0, sizeof(s->next_picture));
     memset(&s->last_picture, 0, sizeof(s->last_picture));
     memset(&s->current_picture, 0, sizeof(s->current_picture));
-    memset(&s->new_picture, 0, sizeof(s->new_picture));
 
     memset(s->thread_context, 0, sizeof(s->thread_context));
 
@@ -720,8 +720,7 @@ av_cold int ff_mpv_common_init(MpegEncContext *s)
 
     if (!(s->next_picture.f    = av_frame_alloc()) ||
         !(s->last_picture.f    = av_frame_alloc()) ||
-        !(s->current_picture.f = av_frame_alloc()) ||
-        !(s->new_picture       = av_frame_alloc()))
+        !(s->current_picture.f = av_frame_alloc()))
         goto fail_nomem;
 
     if ((ret = ff_mpv_init_context_frame(s)))
@@ -737,10 +736,6 @@ av_cold int ff_mpv_common_init(MpegEncContext *s)
                " reducing to %d\n", nb_slices, max_slices);
         nb_slices = max_slices;
     }
-
-#if FF_API_FLAG_TRUNCATED
-    s->parse_context.state = -1;
-#endif
 
     s->context_initialized = 1;
     memset(s->thread_context, 0, sizeof(s->thread_context));
@@ -791,11 +786,6 @@ void ff_mpv_common_end(MpegEncContext *s)
     if (s->slice_context_count > 1)
         s->slice_context_count = 1;
 
-#if FF_API_FLAG_TRUNCATED
-    av_freep(&s->parse_context.buffer);
-    s->parse_context.buffer_size = 0;
-#endif
-
     av_freep(&s->bitstream_buffer);
     s->allocated_bitstream_buffer_size = 0;
 
@@ -804,13 +794,12 @@ void ff_mpv_common_end(MpegEncContext *s)
 
     if (s->picture) {
         for (int i = 0; i < MAX_PICTURE_COUNT; i++)
-            ff_mpv_picture_free(s->avctx, &s->picture[i]);
+            ff_mpv_picture_free(&s->picture[i]);
     }
     av_freep(&s->picture);
-    ff_mpv_picture_free(s->avctx, &s->last_picture);
-    ff_mpv_picture_free(s->avctx, &s->current_picture);
-    ff_mpv_picture_free(s->avctx, &s->next_picture);
-    av_frame_free(&s->new_picture);
+    ff_mpv_picture_free(&s->last_picture);
+    ff_mpv_picture_free(&s->current_picture);
+    ff_mpv_picture_free(&s->next_picture);
 
     s->context_initialized      = 0;
     s->context_reinit           = 0;

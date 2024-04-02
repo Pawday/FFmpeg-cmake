@@ -25,13 +25,13 @@
  */
 
 #include "libavutil/imgutils.h"
+#include "libavutil/mem.h"
 
 #define BITSTREAM_READER_LE
 #include "avcodec.h"
 #include "codec_internal.h"
 #include "get_bits.h"
 #include "lossless_videodsp.h"
-#include "mathops.h"
 #include "thread.h"
 
 typedef struct VBLEContext {
@@ -135,7 +135,7 @@ static int vble_decode_frame(AVCodecContext *avctx, AVFrame *pic,
         return ret;
 
     /* Set flags */
-    pic->key_frame = 1;
+    pic->flags |= AV_FRAME_FLAG_KEY;
     pic->pict_type = AV_PICTURE_TYPE_I;
 
     /* Version should always be 1 */

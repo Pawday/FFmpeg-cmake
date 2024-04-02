@@ -33,7 +33,6 @@
 #include "asv.h"
 #include "avcodec.h"
 #include "codec_internal.h"
-#include "dct.h"
 #include "encode.h"
 #include "fdctdsp.h"
 #include "mpeg12data.h"
@@ -273,7 +272,7 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     }
 
     if ((ret = ff_alloc_packet(avctx, pkt, c->mb_height * c->mb_width * MAX_MB_SIZE +
-                               AV_INPUT_BUFFER_MIN_SIZE)) < 0)
+                               FF_INPUT_BUFFER_MIN_SIZE)) < 0)
         return ret;
 
     init_put_bits(&a->pb, pkt->data, pkt->size);
@@ -362,7 +361,7 @@ const FFCodec ff_asv1_encoder = {
     CODEC_LONG_NAME("ASUS V1"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_ASV1,
-    .p.capabilities = AV_CODEC_CAP_DR1,
+    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE,
     .priv_data_size = sizeof(ASVEncContext),
     .init           = encode_init,
     FF_CODEC_ENCODE_CB(encode_frame),
@@ -377,7 +376,7 @@ const FFCodec ff_asv2_encoder = {
     CODEC_LONG_NAME("ASUS V2"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_ASV2,
-    .p.capabilities = AV_CODEC_CAP_DR1,
+    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE,
     .priv_data_size = sizeof(ASVEncContext),
     .init           = encode_init,
     FF_CODEC_ENCODE_CB(encode_frame),

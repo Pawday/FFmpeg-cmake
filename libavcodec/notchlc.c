@@ -23,6 +23,7 @@
 #include <string.h>
 
 #define BITSTREAM_READER_LE
+#include "libavutil/mem.h"
 #include "avcodec.h"
 #include "bytestream.h"
 #include "codec_internal.h"
@@ -76,12 +77,13 @@ static int lz4_decompress(AVCodecContext *avctx,
                           GetByteContext *gb,
                           PutByteContext *pb)
 {
-    unsigned reference_pos, match_length, delta, pos = 0;
+    unsigned reference_pos, delta, pos = 0;
     uint8_t history[64 * 1024];
+    int match_length;
 
     while (bytestream2_get_bytes_left(gb) > 0) {
         uint8_t token = bytestream2_get_byte(gb);
-        unsigned num_literals = token >> 4;
+        int num_literals = token >> 4;
 
         if (num_literals == 15) {
             unsigned char current;
@@ -514,7 +516,7 @@ static int decode_frame(AVCodecContext *avctx, AVFrame *p,
         return ret;
 
     p->pict_type = AV_PICTURE_TYPE_I;
-    p->key_frame = 1;
+    p->flags |= AV_FRAME_FLAG_KEY;
 
     *got_frame = 1;
 

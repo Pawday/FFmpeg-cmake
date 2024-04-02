@@ -24,18 +24,17 @@
  * RTP protocol
  */
 
+#include "libavutil/mem.h"
 #include "libavutil/parseutils.h"
 #include "libavutil/avstring.h"
 #include "libavutil/opt.h"
 #include "avformat.h"
-#include "avio_internal.h"
 #include "rtp.h"
 #include "rtpproto.h"
 #include "url.h"
 #include "ip.h"
 
 #include <stdarg.h>
-#include "internal.h"
 #include "network.h"
 #include "os_support.h"
 #include <fcntl.h>

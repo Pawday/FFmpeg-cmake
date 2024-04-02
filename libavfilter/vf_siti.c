@@ -28,10 +28,10 @@
 
 #include "libavutil/imgutils.h"
 #include "libavutil/internal.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 
 #include "avfilter.h"
-#include "formats.h"
 #include "internal.h"
 #include "video.h"
 
@@ -328,13 +328,6 @@ static const AVFilterPad avfilter_vf_siti_inputs[] = {
     },
 };
 
-static const AVFilterPad avfilter_vf_siti_outputs[] = {
-    {
-        .name = "default",
-        .type = AVMEDIA_TYPE_VIDEO
-    },
-};
-
 const AVFilter ff_vf_siti = {
     .name          = "siti",
     .description   = NULL_IF_CONFIG_SMALL("Calculate spatial information (SI) and temporal information (TI)."),
@@ -345,5 +338,5 @@ const AVFilter ff_vf_siti = {
     .flags         = AVFILTER_FLAG_METADATA_ONLY,
     FILTER_PIXFMTS_ARRAY(pix_fmts),
     FILTER_INPUTS(avfilter_vf_siti_inputs),
-    FILTER_OUTPUTS(avfilter_vf_siti_outputs),
+    FILTER_OUTPUTS(ff_video_default_filterpad),
 };

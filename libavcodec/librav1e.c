@@ -22,11 +22,13 @@
 
 #include <rav1e.h>
 
+#include "libavutil/buffer.h"
 #include "libavutil/internal.h"
 #include "libavutil/avassert.h"
 #include "libavutil/base64.h"
 #include "libavutil/common.h"
 #include "libavutil/mathematics.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
 #include "avcodec.h"
@@ -52,6 +54,14 @@ typedef struct librav1eContext {
     int tile_rows;
     int tile_cols;
 } librav1eContext;
+
+typedef struct FrameData {
+    int64_t pts;
+    int64_t duration;
+
+    void        *frame_opaque;
+    AVBufferRef *frame_opaque_ref;
+} FrameData;
 
 static inline RaPixelRange range_map(enum AVPixelFormat pix_fmt, enum AVColorRange range)
 {
@@ -207,10 +217,15 @@ static av_cold int librav1e_encode_init(AVCodecContext *avctx)
                                    avctx->framerate.den, avctx->framerate.num
                                    });
     } else {
+FF_DISABLE_DEPRECATION_WARNINGS
         rav1e_config_set_time_base(cfg, (RaRational) {
-                                   avctx->time_base.num * avctx->ticks_per_frame,
-                                   avctx->time_base.den
+                                   avctx->time_base.num
+#if FF_API_TICKS_PER_FRAME
+                                   * avctx->ticks_per_frame
+#endif
+                                   , avctx->time_base.den
                                    });
+FF_ENABLE_DEPRECATION_WARNINGS
     }
 
     if ((avctx->flags & AV_CODEC_FLAG_PASS1 || avctx->flags & AV_CODEC_FLAG_PASS2) && !avctx->bit_rate) {
@@ -419,11 +434,23 @@ end:
     return ret;
 }
 
+static void frame_data_free(void *data)
+{
+    FrameData *fd = data;
+
+    if (!fd)
+        return;
+
+    av_buffer_unref(&fd->frame_opaque_ref);
+    av_free(data);
+}
+
 static int librav1e_receive_packet(AVCodecContext *avctx, AVPacket *pkt)
 {
     librav1eContext *ctx = avctx->priv_data;
     RaFrame *rframe = ctx->rframe;
     RaPacket *rpkt = NULL;
+    FrameData *fd;
     int ret;
 
     if (!rframe) {
@@ -436,18 +463,25 @@ static int librav1e_receive_packet(AVCodecContext *avctx, AVPacket *pkt)
         if (frame->buf[0]) {
             const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(frame->format);
 
-            int64_t *pts = av_malloc(sizeof(int64_t));
-            if (!pts) {
+            fd = av_mallocz(sizeof(*fd));
+            if (!fd) {
                 av_log(avctx, AV_LOG_ERROR, "Could not allocate PTS buffer.\n");
                 return AVERROR(ENOMEM);
             }
-            *pts = frame->pts;
+            fd->pts      = frame->pts;
+            fd->duration = frame->duration;
+
+            if (avctx->flags & AV_CODEC_FLAG_COPY_OPAQUE) {
+                fd->frame_opaque = frame->opaque;
+                fd->frame_opaque_ref = frame->opaque_ref;
+                frame->opaque_ref    = NULL;
+            }
 
             rframe = rav1e_frame_new(ctx->ctx);
             if (!rframe) {
                 av_log(avctx, AV_LOG_ERROR, "Could not allocate new rav1e frame.\n");
                 av_frame_unref(frame);
-                av_freep(&pts);
+                frame_data_free(fd);
                 return AVERROR(ENOMEM);
             }
 
@@ -459,7 +493,7 @@ static int librav1e_receive_packet(AVCodecContext *avctx, AVPacket *pkt)
                                        frame->linesize[i], bytes);
             }
             av_frame_unref(frame);
-            rav1e_frame_set_opaque(rframe, pts, av_free);
+            rav1e_frame_set_opaque(rframe, fd, frame_data_free);
         }
     }
 
@@ -535,8 +569,17 @@ retry:
     if (rpkt->frame_type == RA_FRAME_TYPE_KEY)
         pkt->flags |= AV_PKT_FLAG_KEY;
 
-    pkt->pts = pkt->dts = *((int64_t *) rpkt->opaque);
-    av_free(rpkt->opaque);
+    fd = rpkt->opaque;
+    pkt->pts = pkt->dts = fd->pts;
+    pkt->duration = fd->duration;
+
+    if (avctx->flags & AV_CODEC_FLAG_COPY_OPAQUE) {
+        pkt->opaque          = fd->frame_opaque;
+        pkt->opaque_ref      = fd->frame_opaque_ref;
+        fd->frame_opaque_ref = NULL;
+    }
+
+    frame_data_free(fd);
 
     if (avctx->flags & AV_CODEC_FLAG_RECON_FRAME) {
         AVCodecInternal *avci = avctx->internal;
@@ -626,7 +669,8 @@ const FFCodec ff_librav1e_encoder = {
     .defaults       = librav1e_defaults,
     .p.pix_fmts     = librav1e_pix_fmts,
     .p.capabilities = AV_CODEC_CAP_DELAY | AV_CODEC_CAP_OTHER_THREADS |
-                      AV_CODEC_CAP_DR1 | AV_CODEC_CAP_ENCODER_RECON_FRAME,
+                      AV_CODEC_CAP_DR1 | AV_CODEC_CAP_ENCODER_RECON_FRAME |
+                      AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE,
     .caps_internal  = FF_CODEC_CAP_NOT_INIT_THREADSAFE |
                       FF_CODEC_CAP_INIT_CLEANUP | FF_CODEC_CAP_AUTO_THREADS,
     .p.wrapper_name = "librav1e",

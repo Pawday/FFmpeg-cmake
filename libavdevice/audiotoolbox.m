@@ -28,8 +28,10 @@
 #import <AudioToolbox/AudioToolbox.h>
 #include <pthread.h>
 
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 #include "libavformat/internal.h"
+#include "libavformat/mux.h"
 #include "libavutil/internal.h"
 #include "avdevice.h"
 
@@ -84,7 +86,11 @@ static av_cold int at_write_header(AVFormatContext *avctx)
     AudioObjectPropertyAddress prop;
     prop.mSelector = kAudioHardwarePropertyDevices;
     prop.mScope    = kAudioObjectPropertyScopeGlobal;
+#if !TARGET_OS_IPHONE && __MAC_OS_X_VERSION_MIN_REQUIRED >= 120000
+    prop.mElement  = kAudioObjectPropertyElementMain;
+#else
     prop.mElement  = kAudioObjectPropertyElementMaster;
+#endif
     err = AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &prop, 0, NULL, &data_size);
     if (check_status(avctx, &err, "AudioObjectGetPropertyDataSize devices"))
         return AVERROR(EINVAL);
@@ -294,15 +300,15 @@ static const AVClass at_class = {
     .category   = AV_CLASS_CATEGORY_DEVICE_AUDIO_OUTPUT,
 };
 
-const AVOutputFormat ff_audiotoolbox_muxer = {
-    .name           = "audiotoolbox",
-    .long_name      = NULL_IF_CONFIG_SMALL("AudioToolbox output device"),
+const FFOutputFormat ff_audiotoolbox_muxer = {
+    .p.name         = "audiotoolbox",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("AudioToolbox output device"),
     .priv_data_size = sizeof(ATContext),
-    .audio_codec    = AV_NE(AV_CODEC_ID_PCM_S16BE, AV_CODEC_ID_PCM_S16LE),
-    .video_codec    = AV_CODEC_ID_NONE,
+    .p.audio_codec  = AV_NE(AV_CODEC_ID_PCM_S16BE, AV_CODEC_ID_PCM_S16LE),
+    .p.video_codec  = AV_CODEC_ID_NONE,
     .write_header   = at_write_header,
     .write_packet   = at_write_packet,
     .write_trailer  = at_write_trailer,
-    .flags          = AVFMT_NOFILE,
-    .priv_class     = &at_class,
+    .p.flags        = AVFMT_NOFILE,
+    .p.priv_class   = &at_class,
 };

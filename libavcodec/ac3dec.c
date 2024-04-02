@@ -35,6 +35,7 @@
 #include "libavutil/crc.h"
 #include "libavutil/downmix_info.h"
 #include "libavutil/intmath.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 #include "libavutil/thread.h"
 #include "bswapdsp.h"
@@ -190,14 +191,6 @@ static void ac3_downmix(AVCodecContext *avctx)
     const AVChannelLayout stereo = (AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO;
 
     /* allow downmixing to stereo or mono */
-#if FF_API_OLD_CHANNEL_LAYOUT
-FF_DISABLE_DEPRECATION_WARNINGS
-    if (avctx->request_channel_layout) {
-        av_channel_layout_uninit(&s->downmix_layout);
-        av_channel_layout_from_mask(&s->downmix_layout, avctx->request_channel_layout);
-    }
-FF_ENABLE_DEPRECATION_WARNINGS
-#endif
     if (avctx->ch_layout.nb_channels > 1 &&
         !av_channel_layout_compare(&s->downmix_layout, &mono)) {
         av_channel_layout_uninit(&avctx->ch_layout);
@@ -1714,6 +1707,7 @@ skip:
     if (!err) {
         avctx->sample_rate = s->sample_rate;
         avctx->bit_rate    = s->bit_rate + s->prev_bit_rate;
+        avctx->profile     = s->eac3_extension_type_a == 1 ? AV_PROFILE_EAC3_DDP_ATMOS : AV_PROFILE_UNKNOWN;
     }
 
     if (!avctx->sample_rate) {

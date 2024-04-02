@@ -25,13 +25,13 @@
 #include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 #include "libavutil/ffmath.h"
+#include "libavutil/mem.h"
 #include "libavutil/mem_internal.h"
 #include "libavutil/opt.h"
 #include "libavutil/thread.h"
 #include "libavutil/tx.h"
 #include "avcodec.h"
 #include "codec_internal.h"
-#include "dca.h"
 #include "dcaadpcm.h"
 #include "dcamath.h"
 #include "dca_core.h"
@@ -1315,7 +1315,8 @@ const FFCodec ff_dca_encoder = {
     CODEC_LONG_NAME("DCA (DTS Coherent Acoustics)"),
     .p.type                = AVMEDIA_TYPE_AUDIO,
     .p.id                  = AV_CODEC_ID_DTS,
-    .p.capabilities        = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_EXPERIMENTAL,
+    .p.capabilities        = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_EXPERIMENTAL |
+                             AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE,
     .priv_data_size        = sizeof(DCAEncContext),
     .init                  = encode_init,
     .close                 = encode_close,
@@ -1324,9 +1325,6 @@ const FFCodec ff_dca_encoder = {
     .p.sample_fmts         = (const enum AVSampleFormat[]){ AV_SAMPLE_FMT_S32,
                                                             AV_SAMPLE_FMT_NONE },
     .p.supported_samplerates = sample_rates,
-    CODEC_OLD_CHANNEL_LAYOUTS(AV_CH_LAYOUT_MONO, AV_CH_LAYOUT_STEREO,
-                              AV_CH_LAYOUT_2_2,  AV_CH_LAYOUT_5POINT0,
-                              AV_CH_LAYOUT_5POINT1)
     .p.ch_layouts     = (const AVChannelLayout[]){
         AV_CHANNEL_LAYOUT_MONO,
         AV_CHANNEL_LAYOUT_STEREO,

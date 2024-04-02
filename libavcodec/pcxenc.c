@@ -26,9 +26,9 @@
  * @see http://bespin.org/~qz/pc-gpe/pcx.txt
  */
 
+#include "libavutil/imgutils_internal.h"
 #include "avcodec.h"
 #include "bytestream.h"
-#include "libavutil/imgutils.h"
 #include "codec_internal.h"
 #include "encode.h"
 
@@ -197,7 +197,7 @@ const FFCodec ff_pcx_encoder = {
     CODEC_LONG_NAME("PC Paintbrush PCX image"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_PCX,
-    .p.capabilities = AV_CODEC_CAP_DR1,
+    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE,
     FF_CODEC_ENCODE_CB(pcx_encode_frame),
     .p.pix_fmts     = (const enum AVPixelFormat[]){
         AV_PIX_FMT_RGB24,

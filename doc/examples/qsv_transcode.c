@@ -1,6 +1,4 @@
 /*
- * Quick Sync Video (video transcoding) transcode sample
- *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -21,12 +19,12 @@
  */
 
 /**
- * @file
- * Intel QSV-accelerated transcoding example.
- *
+ * @file Intel QSV-accelerated video transcoding API usage example
  * @example qsv_transcode.c
- * This example shows how to do QSV-accelerated transcoding and how to
- * dynamically change encoder's option.
+ *
+ * Perform QSV-accelerated transcoding and show to dynamically change
+ * encoder's options.
+ *
  * Usage: qsv_transcode input_stream codec output_stream initial option
  *                      { frame_number new_option }
  * e.g: - qsv_transcode input.mp4 h264_qsv output_h264.mp4 "g 60"
@@ -40,6 +38,7 @@
 #include <errno.h>
 
 #include <libavutil/hwcontext.h>
+#include <libavutil/mem.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/opt.h>
@@ -64,10 +63,10 @@ static int str_to_dict(char* optstr, AVDictionary **opt)
         return 0;
     key = strtok(optstr, " ");
     if (key == NULL)
-        return AVERROR(ENAVAIL);
+        return AVERROR(EINVAL);
     value = strtok(NULL, " ");
     if (value == NULL)
-        return AVERROR(ENAVAIL);
+        return AVERROR(EINVAL);
     av_dict_set(opt, key, value, 0);
     do {
         key = strtok(NULL, " ");
@@ -75,7 +74,7 @@ static int str_to_dict(char* optstr, AVDictionary **opt)
             return 0;
         value = strtok(NULL, " ");
         if (value == NULL)
-            return AVERROR(ENAVAIL);
+            return AVERROR(EINVAL);
         av_dict_set(opt, key, value, 0);
     } while(key != NULL);
     return 0;
@@ -90,7 +89,7 @@ static int dynamic_set_parameter(AVCodecContext *avctx)
     if (current_setting_number < setting_number &&
         frame_number == dynamic_setting[current_setting_number].frame_number) {
         AVDictionaryEntry *e = NULL;
-        ret = str_to_dict(dynamic_setting[current_setting_number].optstr, &opts);
+        ret = str_to_dict(dynamic_setting[current_setting_number++].optstr, &opts);
         if (ret < 0) {
             fprintf(stderr, "The dynamic parameter is wrong\n");
             goto fail;
@@ -183,7 +182,7 @@ static int open_input_file(char *filename)
         break;
     default:
         fprintf(stderr, "Codec is not supportted by qsv\n");
-        return AVERROR(ENAVAIL);
+        return AVERROR(EINVAL);
     }
 
     if (!(decoder_ctx = avcodec_alloc_context3(decoder)))

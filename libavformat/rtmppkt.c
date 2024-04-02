@@ -20,9 +20,8 @@
  */
 
 #include "libavcodec/bytestream.h"
-#include "libavutil/avstring.h"
 #include "libavutil/intfloat.h"
-#include "avformat.h"
+#include "libavutil/mem.h"
 
 #include "rtmppkt.h"
 #include "flv.h"
@@ -38,6 +37,12 @@ void ff_amf_write_number(uint8_t **dst, double val)
 {
     bytestream_put_byte(dst, AMF_DATA_TYPE_NUMBER);
     bytestream_put_be64(dst, av_double2int(val));
+}
+
+void ff_amf_write_array_start(uint8_t **dst, uint32_t length)
+{
+    bytestream_put_byte(dst, AMF_DATA_TYPE_ARRAY);
+    bytestream_put_be32(dst, length);
 }
 
 void ff_amf_write_string(uint8_t **dst, const char *str)

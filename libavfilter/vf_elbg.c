@@ -24,12 +24,14 @@
  */
 
 #include "libavcodec/elbg.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
 #include "libavutil/random_seed.h"
 
 #include "avfilter.h"
 #include "drawutils.h"
+#include "formats.h"
 #include "internal.h"
 #include "video.h"
 
@@ -253,13 +255,6 @@ static const AVFilterPad elbg_inputs[] = {
     },
 };
 
-static const AVFilterPad elbg_outputs[] = {
-    {
-        .name = "default",
-        .type = AVMEDIA_TYPE_VIDEO,
-    },
-};
-
 const AVFilter ff_vf_elbg = {
     .name          = "elbg",
     .description   = NULL_IF_CONFIG_SMALL("Apply posterize effect, using the ELBG algorithm."),
@@ -268,6 +263,6 @@ const AVFilter ff_vf_elbg = {
     .init          = init,
     .uninit        = uninit,
     FILTER_INPUTS(elbg_inputs),
-    FILTER_OUTPUTS(elbg_outputs),
+    FILTER_OUTPUTS(ff_video_default_filterpad),
     FILTER_QUERY_FUNC(query_formats),
 };

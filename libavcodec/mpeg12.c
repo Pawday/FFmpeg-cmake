@@ -72,7 +72,7 @@ av_cold void ff_init_2d_vlc_rl(const uint16_t table_vlc[][2], RL_VLC_ELEM rl_vlc
     VLCElem table[680] = { 0 };
     VLC vlc = { .table = table, .table_allocated = static_size };
     av_assert0(static_size <= FF_ARRAY_ELEMS(table));
-    init_vlc(&vlc, TEX_VLC_BITS, n + 2, &table_vlc[0][1], 4, 2, &table_vlc[0][0], 4, 2, INIT_VLC_USE_NEW_STATIC | flags);
+    vlc_init(&vlc, TEX_VLC_BITS, n + 2, &table_vlc[0][1], 4, 2, &table_vlc[0][0], 4, 2, VLC_INIT_USE_STATIC | flags);
 
     for (i = 0; i < vlc.table_size; i++) {
         int code = vlc.table[i].sym;
@@ -115,43 +115,43 @@ void ff_mpeg1_clean_buffers(MpegEncContext *s)
 /******************************************/
 /* decoding */
 
-VLC ff_mv_vlc;
+VLCElem ff_mv_vlc[266];
 
-VLC ff_dc_lum_vlc;
-VLC ff_dc_chroma_vlc;
+VLCElem ff_dc_lum_vlc[512];
+VLCElem ff_dc_chroma_vlc[514];
 
-VLC ff_mbincr_vlc;
-VLC ff_mb_ptype_vlc;
-VLC ff_mb_btype_vlc;
-VLC ff_mb_pat_vlc;
+VLCElem ff_mbincr_vlc[538];
+VLCElem ff_mb_ptype_vlc[64];
+VLCElem ff_mb_btype_vlc[64];
+VLCElem ff_mb_pat_vlc[512];
 
 RL_VLC_ELEM ff_mpeg1_rl_vlc[680];
 RL_VLC_ELEM ff_mpeg2_rl_vlc[674];
 
 static av_cold void mpeg12_init_vlcs(void)
 {
-    INIT_VLC_STATIC(&ff_dc_lum_vlc, DC_VLC_BITS, 12,
-                    ff_mpeg12_vlc_dc_lum_bits, 1, 1,
-                    ff_mpeg12_vlc_dc_lum_code, 2, 2, 512);
-    INIT_VLC_STATIC(&ff_dc_chroma_vlc,  DC_VLC_BITS, 12,
-                    ff_mpeg12_vlc_dc_chroma_bits, 1, 1,
-                    ff_mpeg12_vlc_dc_chroma_code, 2, 2, 514);
-    INIT_VLC_STATIC(&ff_mv_vlc, MV_VLC_BITS, 17,
-                    &ff_mpeg12_mbMotionVectorTable[0][1], 2, 1,
-                    &ff_mpeg12_mbMotionVectorTable[0][0], 2, 1, 266);
-    INIT_VLC_STATIC(&ff_mbincr_vlc, MBINCR_VLC_BITS, 36,
-                    &ff_mpeg12_mbAddrIncrTable[0][1], 2, 1,
-                    &ff_mpeg12_mbAddrIncrTable[0][0], 2, 1, 538);
-    INIT_VLC_STATIC(&ff_mb_pat_vlc, MB_PAT_VLC_BITS, 64,
-                    &ff_mpeg12_mbPatTable[0][1], 2, 1,
-                    &ff_mpeg12_mbPatTable[0][0], 2, 1, 512);
+    VLC_INIT_STATIC_TABLE(ff_dc_lum_vlc, DC_VLC_BITS, 12,
+                          ff_mpeg12_vlc_dc_lum_bits, 1, 1,
+                          ff_mpeg12_vlc_dc_lum_code, 2, 2, 0);
+    VLC_INIT_STATIC_TABLE(ff_dc_chroma_vlc,  DC_VLC_BITS, 12,
+                          ff_mpeg12_vlc_dc_chroma_bits, 1, 1,
+                          ff_mpeg12_vlc_dc_chroma_code, 2, 2, 0);
+    VLC_INIT_STATIC_TABLE(ff_mv_vlc, MV_VLC_BITS, 17,
+                          &ff_mpeg12_mbMotionVectorTable[0][1], 2, 1,
+                          &ff_mpeg12_mbMotionVectorTable[0][0], 2, 1, 0);
+    VLC_INIT_STATIC_TABLE(ff_mbincr_vlc, MBINCR_VLC_BITS, 36,
+                          &ff_mpeg12_mbAddrIncrTable[0][1], 2, 1,
+                          &ff_mpeg12_mbAddrIncrTable[0][0], 2, 1, 0);
+    VLC_INIT_STATIC_TABLE(ff_mb_pat_vlc, MB_PAT_VLC_BITS, 64,
+                          &ff_mpeg12_mbPatTable[0][1], 2, 1,
+                          &ff_mpeg12_mbPatTable[0][0], 2, 1, 0);
 
-    INIT_VLC_STATIC(&ff_mb_ptype_vlc, MB_PTYPE_VLC_BITS, 7,
-                    &table_mb_ptype[0][1], 2, 1,
-                    &table_mb_ptype[0][0], 2, 1, 64);
-    INIT_VLC_STATIC(&ff_mb_btype_vlc, MB_BTYPE_VLC_BITS, 11,
-                    &table_mb_btype[0][1], 2, 1,
-                    &table_mb_btype[0][0], 2, 1, 64);
+    VLC_INIT_STATIC_TABLE(ff_mb_ptype_vlc, MB_PTYPE_VLC_BITS, 7,
+                          &table_mb_ptype[0][1], 2, 1,
+                          &table_mb_ptype[0][0], 2, 1, 0);
+    VLC_INIT_STATIC_TABLE(ff_mb_btype_vlc, MB_BTYPE_VLC_BITS, 11,
+                          &table_mb_btype[0][1], 2, 1,
+                          &table_mb_btype[0][0], 2, 1, 0);
 
     ff_init_2d_vlc_rl(ff_mpeg1_vlc_table, ff_mpeg1_rl_vlc, ff_mpeg12_run,
                       ff_mpeg12_level, MPEG12_RL_NB_ELEMS,
@@ -166,72 +166,6 @@ av_cold void ff_mpeg12_init_vlcs(void)
     static AVOnce init_static_once = AV_ONCE_INIT;
     ff_thread_once(&init_static_once, mpeg12_init_vlcs);
 }
-
-#if FF_API_FLAG_TRUNCATED
-/**
- * Find the end of the current frame in the bitstream.
- * @return the position of the first byte of the next frame, or -1
- */
-int ff_mpeg1_find_frame_end(ParseContext *pc, const uint8_t *buf, int buf_size, AVCodecParserContext *s)
-{
-    int i;
-    uint32_t state = pc->state;
-
-    /* EOF considered as end of frame */
-    if (buf_size == 0)
-        return 0;
-
-/*
- 0  frame start         -> 1/4
- 1  first_SEQEXT        -> 0/2
- 2  first field start   -> 3/0
- 3  second_SEQEXT       -> 2/0
- 4  searching end
-*/
-
-    for (i = 0; i < buf_size; i++) {
-        av_assert1(pc->frame_start_found >= 0 && pc->frame_start_found <= 4);
-        if (pc->frame_start_found & 1) {
-            if (state == EXT_START_CODE && (buf[i] & 0xF0) != 0x80)
-                pc->frame_start_found--;
-            else if (state == EXT_START_CODE + 2) {
-                if ((buf[i] & 3) == 3)
-                    pc->frame_start_found = 0;
-                else
-                    pc->frame_start_found = (pc->frame_start_found + 1) & 3;
-            }
-            state++;
-        } else {
-            i = avpriv_find_start_code(buf + i, buf + buf_size, &state) - buf - 1;
-            if (pc->frame_start_found == 0 && state >= SLICE_MIN_START_CODE && state <= SLICE_MAX_START_CODE) {
-                i++;
-                pc->frame_start_found = 4;
-            }
-            if (state == SEQ_END_CODE) {
-                pc->frame_start_found = 0;
-                pc->state=-1;
-                return i+1;
-            }
-            if (pc->frame_start_found == 2 && state == SEQ_START_CODE)
-                pc->frame_start_found = 0;
-            if (pc->frame_start_found  < 4 && state == EXT_START_CODE)
-                pc->frame_start_found++;
-            if (pc->frame_start_found == 4 && (state & 0xFFFFFF00) == 0x100) {
-                if (state < SLICE_MIN_START_CODE || state > SLICE_MAX_START_CODE) {
-                    pc->frame_start_found = 0;
-                    pc->state             = -1;
-                    return i - 3;
-                }
-            }
-            if (pc->frame_start_found == 0 && s && state == PICTURE_START_CODE) {
-                ff_fetch_timestamp(s, i - 3, 1, i > 3);
-            }
-        }
-    }
-    pc->state = state;
-    return END_NOT_FOUND;
-}
-#endif
 
 #define MAX_INDEX (64 - 1)
 

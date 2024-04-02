@@ -26,14 +26,13 @@
 #include "config_components.h"
 
 #include "libavutil/avstring.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
 #include "avfilter.h"
 #include "drawutils.h"
-#include "formats.h"
 #include "framesync.h"
 #include "internal.h"
-#include "video.h"
 #include "scene_sad.h"
 
 typedef struct IdentityContext {

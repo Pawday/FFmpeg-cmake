@@ -42,7 +42,9 @@
 #include "huffyuvdsp.h"
 #include "lossless_videodsp.h"
 #include "thread.h"
+#include "libavutil/emms.h"
 #include "libavutil/imgutils.h"
+#include "libavutil/mem.h"
 #include "libavutil/pixdesc.h"
 
 #define VLC_BITS 12
@@ -168,8 +170,9 @@ static int generate_joint_tables(HYuvDecContext *s)
     len = (uint8_t *)(bits + (1 << VLC_BITS));
 
     if (s->bitstream_bpp < 24 || s->version > 2) {
+        int count = 1 + s->alpha + 2 * s->chroma;
         int p, i, y, u;
-        for (p = 0; p < 4; p++) {
+        for (p = 0; p < count; p++) {
             int p0 = s->version > 2 ? p : 0;
             for (i = y = 0; y < s->vlc_n; y++) {
                 int len0  = s->len[p0][y];
@@ -191,8 +194,8 @@ static int generate_joint_tables(HYuvDecContext *s)
                         i++;
                 }
             }
-            ff_free_vlc(&s->vlc[4 + p]);
-            if ((ret = ff_init_vlc_sparse(&s->vlc[4 + p], VLC_BITS, i, len, 1, 1,
+            ff_vlc_free(&s->vlc[4 + p]);
+            if ((ret = ff_vlc_init_sparse(&s->vlc[4 + p], VLC_BITS, i, len, 1, 1,
                                           bits, 2, 2, symbols, 2, 2, 0)) < 0)
                 goto out;
         }
@@ -235,8 +238,8 @@ static int generate_joint_tables(HYuvDecContext *s)
                 }
             }
         }
-        ff_free_vlc(&s->vlc[4]);
-        if ((ret = init_vlc(&s->vlc[4], VLC_BITS, i, len, 1, 1,
+        ff_vlc_free(&s->vlc[4]);
+        if ((ret = vlc_init(&s->vlc[4], VLC_BITS, i, len, 1, 1,
                             bits, 2, 2, 0)) < 0)
             goto out;
     }
@@ -263,8 +266,8 @@ static int read_huffman_tables(HYuvDecContext *s, const uint8_t *src, int length
             return ret;
         if ((ret = ff_huffyuv_generate_bits_table(s->bits[i], s->len[i], s->vlc_n)) < 0)
             return ret;
-        ff_free_vlc(&s->vlc[i]);
-        if ((ret = init_vlc(&s->vlc[i], VLC_BITS, s->vlc_n, s->len[i], 1, 1,
+        ff_vlc_free(&s->vlc[i]);
+        if ((ret = vlc_init(&s->vlc[i], VLC_BITS, s->vlc_n, s->len[i], 1, 1,
                            s->bits[i], 4, 4, 0)) < 0)
             return ret;
     }
@@ -303,8 +306,8 @@ static int read_old_huffman_tables(HYuvDecContext *s)
     memcpy(s->len[2], s->len[1], 256 * sizeof(uint8_t));
 
     for (i = 0; i < 4; i++) {
-        ff_free_vlc(&s->vlc[i]);
-        if ((ret = init_vlc(&s->vlc[i], VLC_BITS, 256, s->len[i], 1, 1,
+        ff_vlc_free(&s->vlc[i]);
+        if ((ret = vlc_init(&s->vlc[i], VLC_BITS, 256, s->len[i], 1, 1,
                             s->bits[i], 4, 4, 0)) < 0)
             return ret;
     }
@@ -324,7 +327,7 @@ static av_cold int decode_end(AVCodecContext *avctx)
     av_freep(&s->bitstream_buffer);
 
     for (i = 0; i < 8; i++)
-        ff_free_vlc(&s->vlc[i]);
+        ff_vlc_free(&s->vlc[i]);
 
     return 0;
 }
@@ -695,9 +698,9 @@ static void decode_422_bitstream(HYuvDecContext *s, int count)
 /* TODO instead of restarting the read when the code isn't in the first level
  * of the joint table, jump into the 2nd level of the individual table. */
 #define READ_2PIX_PLANE16(dst0, dst1, plane){\
-    dst0 = get_vlc2(&s->gb, s->vlc[plane].table, VLC_BITS, 3)<<2;\
+    dst0 = get_vlc2(&s->gb, s->vlc[plane].table, VLC_BITS, 3)*4;\
     dst0 += get_bits(&s->gb, 2);\
-    dst1 = get_vlc2(&s->gb, s->vlc[plane].table, VLC_BITS, 3)<<2;\
+    dst1 = get_vlc2(&s->gb, s->vlc[plane].table, VLC_BITS, 3)*4;\
     dst1 += get_bits(&s->gb, 2);\
 }
 static void decode_plane_bitstream(HYuvDecContext *s, int width, int plane)
@@ -755,7 +758,7 @@ static void decode_plane_bitstream(HYuvDecContext *s, int width, int plane)
             }
         }
         if( width&1 && get_bits_left(&s->gb)>0 ) {
-            int dst = get_vlc2(&s->gb, s->vlc[plane].table, VLC_BITS, 3)<<2;
+            int dst = (unsigned)get_vlc2(&s->gb, s->vlc[plane].table, VLC_BITS, 3)<<2;
             s->temp16[0][width-1] = dst + get_bits(&s->gb, 2);
         }
     }

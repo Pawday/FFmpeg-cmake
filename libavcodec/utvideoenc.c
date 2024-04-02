@@ -26,6 +26,7 @@
 
 #include "libavutil/imgutils.h"
 #include "libavutil/intreadwrite.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 
 #include "avcodec.h"
@@ -33,10 +34,26 @@
 #include "encode.h"
 #include "bswapdsp.h"
 #include "bytestream.h"
+#include "lossless_videoencdsp.h"
 #include "put_bits.h"
-#include "mathops.h"
 #include "utvideo.h"
 #include "huffman.h"
+
+typedef struct UtvideoContext {
+    const AVClass *class;
+    BswapDSPContext bdsp;
+    LLVidEncDSPContext llvidencdsp;
+
+    uint32_t frame_info_size, flags;
+    int      planes;
+    int      slices;
+    int      compression;
+    int      frame_pred;
+
+    ptrdiff_t slice_stride;
+    uint8_t  *slice_bits, *slice_buffer[4];
+    int       slice_bits_size;
+} UtvideoContext;
 
 typedef struct HuffEntry {
     uint16_t sym;
@@ -76,7 +93,6 @@ static av_cold int utvideo_encode_init(AVCodecContext *avctx)
     int i, subsampled_height;
     uint32_t original_format;
 
-    c->avctx           = avctx;
     c->frame_info_size = 4;
     c->slice_stride    = FFALIGN(avctx->width, 32);
 
@@ -627,11 +643,11 @@ static int utvideo_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
 #define OFFSET(x) offsetof(UtvideoContext, x)
 #define VE AV_OPT_FLAG_VIDEO_PARAM | AV_OPT_FLAG_ENCODING_PARAM
 static const AVOption options[] = {
-{ "pred", "Prediction method", OFFSET(frame_pred), AV_OPT_TYPE_INT, { .i64 = PRED_LEFT }, PRED_NONE, PRED_MEDIAN, VE, "pred" },
-    { "none",     NULL, 0, AV_OPT_TYPE_CONST, { .i64 = PRED_NONE }, INT_MIN, INT_MAX, VE, "pred" },
-    { "left",     NULL, 0, AV_OPT_TYPE_CONST, { .i64 = PRED_LEFT }, INT_MIN, INT_MAX, VE, "pred" },
-    { "gradient", NULL, 0, AV_OPT_TYPE_CONST, { .i64 = PRED_GRADIENT }, INT_MIN, INT_MAX, VE, "pred" },
-    { "median",   NULL, 0, AV_OPT_TYPE_CONST, { .i64 = PRED_MEDIAN }, INT_MIN, INT_MAX, VE, "pred" },
+{ "pred", "Prediction method", OFFSET(frame_pred), AV_OPT_TYPE_INT, { .i64 = PRED_LEFT }, PRED_NONE, PRED_MEDIAN, VE, .unit = "pred" },
+    { "none",     NULL, 0, AV_OPT_TYPE_CONST, { .i64 = PRED_NONE }, INT_MIN, INT_MAX, VE, .unit = "pred" },
+    { "left",     NULL, 0, AV_OPT_TYPE_CONST, { .i64 = PRED_LEFT }, INT_MIN, INT_MAX, VE, .unit = "pred" },
+    { "gradient", NULL, 0, AV_OPT_TYPE_CONST, { .i64 = PRED_GRADIENT }, INT_MIN, INT_MAX, VE, .unit = "pred" },
+    { "median",   NULL, 0, AV_OPT_TYPE_CONST, { .i64 = PRED_MEDIAN }, INT_MIN, INT_MAX, VE, .unit = "pred" },
 
     { NULL},
 };
@@ -648,7 +664,8 @@ const FFCodec ff_utvideo_encoder = {
     CODEC_LONG_NAME("Ut Video"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_UTVIDEO,
-    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS,
+    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS |
+                      AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE,
     .priv_data_size = sizeof(UtvideoContext),
     .p.priv_class   = &utvideo_class,
     .init           = utvideo_encode_init,

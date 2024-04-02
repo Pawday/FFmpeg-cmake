@@ -31,6 +31,7 @@
 #include "internal.h"
 #include "video.h"
 #include "libavutil/internal.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
 
@@ -301,8 +302,14 @@ static int request_frame(AVFilterLink *link)
 
     frame->pts                 = ctx->pts;
     frame->duration            = 1;
+#if FF_API_FRAME_KEY
     frame->key_frame           = 1;
+#endif
+    frame->flags              |= AV_FRAME_FLAG_KEY;
+#if FF_API_INTERLACED_FRAME
     frame->interlaced_frame    = 0;
+#endif
+    frame->flags              &= ~AV_FRAME_FLAG_INTERLACED;
     frame->pict_type           = AV_PICTURE_TYPE_I;
     frame->sample_aspect_ratio = ctx->sar;
 

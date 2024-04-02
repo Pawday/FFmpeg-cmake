@@ -21,7 +21,9 @@
 
 #include <math.h>
 
+#include "libavutil/avassert.h"
 #include "libavutil/common.h"
+#include "libavutil/mem.h"
 #include "avcodec.h"
 #include "codec_internal.h"
 #include "encode.h"
@@ -101,7 +103,7 @@ const FFCodec ff_comfortnoise_encoder = {
     CODEC_LONG_NAME("RFC 3389 comfort noise generator"),
     .p.type         = AVMEDIA_TYPE_AUDIO,
     .p.id           = AV_CODEC_ID_COMFORT_NOISE,
-    .p.capabilities = AV_CODEC_CAP_DR1,
+    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE,
     .priv_data_size = sizeof(CNGContext),
     .init           = cng_encode_init,
     FF_CODEC_ENCODE_CB(cng_encode_frame),

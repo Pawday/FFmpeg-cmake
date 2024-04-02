@@ -28,11 +28,12 @@
 #include "libavutil/avstring.h"
 #include "libavutil/channel_layout.h"
 #include "libavutil/eval.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
-#include "libavutil/parseutils.h"
 #include "avfilter.h"
 #include "audio.h"
 #include "filters.h"
+#include "formats.h"
 #include "internal.h"
 
 static const char * const var_names[] = {

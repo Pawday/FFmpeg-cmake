@@ -21,8 +21,9 @@
  */
 
 #include "libavutil/attributes.h"
+#include "libavutil/emms.h"
 #include "libavutil/imgutils.h"
-#include "libavutil/internal.h"
+#include "libavutil/mem.h"
 #include "libavutil/mem_internal.h"
 #include "libavutil/thread.h"
 
@@ -59,11 +60,11 @@ enum OldSources {
     BINKB_NB_SRC
 };
 
-static const int binkb_bundle_sizes[BINKB_NB_SRC] = {
+static const uint8_t binkb_bundle_sizes[BINKB_NB_SRC] = {
     4, 8, 8, 5, 5, 11, 11, 4, 4, 7
 };
 
-static const int binkb_bundle_signed[BINKB_NB_SRC] = {
+static const uint8_t binkb_bundle_signed[BINKB_NB_SRC] = {
     0, 0, 0, 1, 1, 0, 1, 0, 0, 0
 };
 
@@ -870,7 +871,7 @@ static int binkb_decode_plane(BinkContext *c, AVFrame *frame, GetBitContext *gb,
 
     binkb_init_bundles(c);
     ref_start = frame->data[plane_idx];
-    ref_end   = frame->data[plane_idx] + (bh * frame->linesize[plane_idx] + bw) * 8;
+    ref_end   = frame->data[plane_idx] + ((bh - 1) * frame->linesize[plane_idx] + bw - 1) * 8;
 
     for (i = 0; i < 64; i++)
         coordmap[i] = (i & 7) + (i >> 3) * stride;
@@ -926,7 +927,7 @@ static int binkb_decode_plane(BinkContext *c, AVFrame *frame, GetBitContext *gb,
                 xoff = binkb_get_value(c, BINKB_SRC_X_OFF);
                 yoff = binkb_get_value(c, BINKB_SRC_Y_OFF) + ybias;
                 ref = dst + xoff + yoff * stride;
-                if (ref < ref_start || ref + 8*stride > ref_end) {
+                if (ref < ref_start || ref > ref_end) {
                     av_log(c->avctx, AV_LOG_WARNING, "Reference block is out of bounds\n");
                 } else if (ref + 8*stride < dst || ref >= dst + 8*stride) {
                     c->put_pixels_tab(dst, ref, stride, 8);
@@ -942,7 +943,7 @@ static int binkb_decode_plane(BinkContext *c, AVFrame *frame, GetBitContext *gb,
                 xoff = binkb_get_value(c, BINKB_SRC_X_OFF);
                 yoff = binkb_get_value(c, BINKB_SRC_Y_OFF) + ybias;
                 ref = dst + xoff + yoff * stride;
-                if (ref < ref_start || ref + 8 * stride > ref_end) {
+                if (ref < ref_start || ref > ref_end) {
                     av_log(c->avctx, AV_LOG_WARNING, "Reference block is out of bounds\n");
                 } else if (ref + 8*stride < dst || ref >= dst + 8*stride) {
                     c->put_pixels_tab(dst, ref, stride, 8);
@@ -974,7 +975,7 @@ static int binkb_decode_plane(BinkContext *c, AVFrame *frame, GetBitContext *gb,
                 xoff = binkb_get_value(c, BINKB_SRC_X_OFF);
                 yoff = binkb_get_value(c, BINKB_SRC_Y_OFF) + ybias;
                 ref = dst + xoff + yoff * stride;
-                if (ref < ref_start || ref + 8 * stride > ref_end) {
+                if (ref < ref_start || ref > ref_end) {
                     av_log(c->avctx, AV_LOG_WARNING, "Reference block is out of bounds\n");
                 } else if (ref + 8*stride < dst || ref >= dst + 8*stride) {
                     c->put_pixels_tab(dst, ref, stride, 8);
@@ -1299,8 +1300,7 @@ static int decode_frame(AVCodecContext *avctx, AVFrame *frame,
     emms_c();
 
     if (c->version > 'b') {
-        av_frame_unref(c->last);
-        if ((ret = av_frame_ref(c->last, frame)) < 0)
+        if ((ret = av_frame_replace(c->last, frame)) < 0)
             return ret;
     }
 
@@ -1318,9 +1318,9 @@ static av_cold void bink_init_vlcs(void)
         bink_trees[i].table           = table + offset;
         bink_trees[i].table_allocated = 1 << maxbits;
         offset                       += bink_trees[i].table_allocated;
-        init_vlc(&bink_trees[i], maxbits, 16,
+        vlc_init(&bink_trees[i], maxbits, 16,
                  bink_tree_lens[i], 1, 1,
-                 bink_tree_bits[i], 1, 1, INIT_VLC_USE_NEW_STATIC | INIT_VLC_LE);
+                 bink_tree_bits[i], 1, 1, VLC_INIT_USE_STATIC | VLC_INIT_LE);
     }
 }
 

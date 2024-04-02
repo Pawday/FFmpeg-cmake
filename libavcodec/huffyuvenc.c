@@ -39,6 +39,8 @@
 #include "huffyuvencdsp.h"
 #include "lossless_videoencdsp.h"
 #include "put_bits.h"
+#include "libavutil/emms.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
 
@@ -761,7 +763,7 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     const AVFrame * const p = pict;
     int i, j, size = 0, ret;
 
-    if ((ret = ff_alloc_packet(avctx, pkt, width * height * 3 * 4 + AV_INPUT_BUFFER_MIN_SIZE)) < 0)
+    if ((ret = ff_alloc_packet(avctx, pkt, width * height * 3 * 4 + FF_INPUT_BUFFER_MIN_SIZE)) < 0)
         return ret;
 
     if (s->context) {
@@ -1047,10 +1049,10 @@ static av_cold int encode_end(AVCodecContext *avctx)
     { "non_deterministic", "Allow multithreading for e.g. context=1 at the expense of determinism", \
       OFFSET(non_determ), AV_OPT_TYPE_BOOL, { .i64 = 0 }, \
       0, 1, VE }, \
-    { "pred", "Prediction method", OFFSET(predictor), AV_OPT_TYPE_INT, { .i64 = LEFT }, LEFT, MEDIAN, VE, "pred" }, \
-        { "left",   NULL, 0, AV_OPT_TYPE_CONST, { .i64 = LEFT },   INT_MIN, INT_MAX, VE, "pred" }, \
-        { "plane",  NULL, 0, AV_OPT_TYPE_CONST, { .i64 = PLANE },  INT_MIN, INT_MAX, VE, "pred" }, \
-        { "median", NULL, 0, AV_OPT_TYPE_CONST, { .i64 = MEDIAN }, INT_MIN, INT_MAX, VE, "pred" }, \
+    { "pred", "Prediction method", OFFSET(predictor), AV_OPT_TYPE_INT, { .i64 = LEFT }, LEFT, MEDIAN, VE, .unit = "pred" }, \
+        { "left",   NULL, 0, AV_OPT_TYPE_CONST, { .i64 = LEFT },   INT_MIN, INT_MAX, VE, .unit = "pred" }, \
+        { "plane",  NULL, 0, AV_OPT_TYPE_CONST, { .i64 = PLANE },  INT_MIN, INT_MAX, VE, .unit = "pred" }, \
+        { "median", NULL, 0, AV_OPT_TYPE_CONST, { .i64 = MEDIAN }, INT_MIN, INT_MAX, VE, .unit = "pred" }, \
 
 static const AVOption normal_options[] = {
     COMMON_OPTIONS
@@ -1082,7 +1084,8 @@ const FFCodec ff_huffyuv_encoder = {
     CODEC_LONG_NAME("Huffyuv / HuffYUV"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_HUFFYUV,
-    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS,
+    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS |
+                      AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE,
     .priv_data_size = sizeof(HYuvEncContext),
     .init           = encode_init,
     FF_CODEC_ENCODE_CB(encode_frame),
@@ -1101,7 +1104,8 @@ const FFCodec ff_ffvhuff_encoder = {
     CODEC_LONG_NAME("Huffyuv FFmpeg variant"),
     .p.type         = AVMEDIA_TYPE_VIDEO,
     .p.id           = AV_CODEC_ID_FFVHUFF,
-    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS,
+    .p.capabilities = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_FRAME_THREADS |
+                      AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE,
     .priv_data_size = sizeof(HYuvEncContext),
     .init           = encode_init,
     FF_CODEC_ENCODE_CB(encode_frame),

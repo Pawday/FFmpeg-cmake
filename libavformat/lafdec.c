@@ -20,7 +20,10 @@
  */
 
 #include "libavutil/intreadwrite.h"
+#include "libavutil/mem.h"
 #include "avformat.h"
+#include "avio_internal.h"
+#include "demux.h"
 #include "internal.h"
 
 #define MAX_STREAMS 4096
@@ -131,19 +134,23 @@ static int laf_read_header(AVFormatContext *ctx)
         codec_id = AV_CODEC_ID_PCM_S24LE;
         bpp = 3;
         break;
+    default:
+        return AVERROR_INVALIDDATA;
     }
 
     s->index = 0;
     s->stored_index = 0;
     s->bpp = bpp;
-    if ((int64_t)bpp * st_count * (int64_t)sample_rate >= INT32_MAX)
+    if ((int64_t)bpp * st_count * (int64_t)sample_rate >= INT32_MAX ||
+        (int64_t)bpp * st_count * (int64_t)sample_rate == 0
+    )
         return AVERROR_INVALIDDATA;
     s->data = av_calloc(st_count * sample_rate, bpp);
     if (!s->data)
         return AVERROR(ENOMEM);
 
-    for (int st = 0; st < st_count; st++) {
-        StreamParams *stp = &s->p[st];
+    for (unsigned i = 0; i < st_count; i++) {
+        StreamParams *stp = &s->p[i];
         AVCodecParameters *par;
         AVStream *st = avformat_new_stream(ctx, NULL);
         if (!st)
@@ -184,7 +191,9 @@ again:
     if (s->index >= ctx->nb_streams) {
         int cur_st = 0, st_count = 0, st_index = 0;
 
-        avio_read(pb, s->header, s->header_len);
+        ret = ffio_read_size(pb, s->header, s->header_len);
+        if (ret < 0)
+            return ret;
         for (int i = 0; i < s->header_len; i++) {
             uint8_t val = s->header[i];
 
@@ -205,7 +214,7 @@ again:
         s->nb_stored = st_count;
         if (!st_count)
             return AVERROR_INVALIDDATA;
-        ret = avio_read(pb, s->data, st_count * st->codecpar->sample_rate * bpp);
+        ret = ffio_read_size(pb, s->data, st_count * st->codecpar->sample_rate * bpp);
         if (ret < 0)
             return ret;
     }
@@ -251,6 +260,15 @@ again:
     return 0;
 }
 
+static int laf_read_close(AVFormatContext *ctx)
+{
+    LAFContext *s = ctx->priv_data;
+
+    av_freep(&s->data);
+
+    return 0;
+}
+
 static int laf_read_seek(AVFormatContext *ctx, int stream_index,
                          int64_t timestamp, int flags)
 {
@@ -261,14 +279,16 @@ static int laf_read_seek(AVFormatContext *ctx, int stream_index,
     return -1;
 }
 
-const AVInputFormat ff_laf_demuxer = {
-    .name           = "laf",
-    .long_name      = NULL_IF_CONFIG_SMALL("LAF (Limitless Audio Format)"),
+const FFInputFormat ff_laf_demuxer = {
+    .p.name         = "laf",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("LAF (Limitless Audio Format)"),
+    .p.extensions   = "laf",
+    .p.flags        = AVFMT_GENERIC_INDEX,
     .priv_data_size = sizeof(LAFContext),
     .read_probe     = laf_probe,
     .read_header    = laf_read_header,
     .read_packet    = laf_read_packet,
+    .read_close     = laf_read_close,
     .read_seek      = laf_read_seek,
-    .extensions     = "laf",
-    .flags          = AVFMT_GENERIC_INDEX,
+    .flags_internal = FF_INFMT_FLAG_INIT_CLEANUP,
 };

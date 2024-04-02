@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 
+#include "libavutil/mem.h"
 #include "avcodec.h"
 #include "bytestream.h"
 #include "codec_internal.h"
@@ -119,13 +120,15 @@ static int decode_frame(AVCodecContext *avctx, AVFrame *frame,
     bytestream2_init(&gbp, s->prev_frame->data[0], avctx->height * s->prev_frame->linesize[0]);
     bytestream2_init_writer(&pb, frame->data[0], avctx->height * frame->linesize[0]);
 
-    frame->key_frame = rle_uncompress(&gb, &pb, &gbp, avctx->width, avctx->height, avctx->width * 3,
-                                      frame->linesize[0], s->prev_frame->linesize[0]);
+    if (rle_uncompress(&gb, &pb, &gbp, avctx->width, avctx->height, avctx->width * 3,
+                       frame->linesize[0], s->prev_frame->linesize[0]))
+        frame->flags |= AV_FRAME_FLAG_KEY;
+    else
+        frame->flags &= ~AV_FRAME_FLAG_KEY;
 
-    frame->pict_type = frame->key_frame ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_P;
+    frame->pict_type = (frame->flags & AV_FRAME_FLAG_KEY) ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_P;
 
-    av_frame_unref(s->prev_frame);
-    if ((ret = av_frame_ref(s->prev_frame, frame)) < 0)
+    if ((ret = av_frame_replace(s->prev_frame, frame)) < 0)
         return ret;
 
     *got_frame = 1;

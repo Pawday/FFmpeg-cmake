@@ -37,6 +37,7 @@
 #include "libavutil/hwcontext_drm.h"
 #include "libavutil/imgutils.h"
 #include "libavutil/log.h"
+#include "libavutil/mem.h"
 
 #define RECEIVE_FRAME_TIMEOUT   100
 #define FRAMEGROUP_MAX_FRAMES   16
@@ -404,8 +405,10 @@ static int rkmpp_retrieve_frame(AVCodecContext *avctx, AVFrame *frame)
         frame->colorspace       = mpp_frame_get_colorspace(mppframe);
 
         mode = mpp_frame_get_mode(mppframe);
-        frame->interlaced_frame = ((mode & MPP_FRAME_FLAG_FIELD_ORDER_MASK) == MPP_FRAME_FLAG_DEINTERLACED);
-        frame->top_field_first  = ((mode & MPP_FRAME_FLAG_FIELD_ORDER_MASK) == MPP_FRAME_FLAG_TOP_FIRST);
+        if ((mode & MPP_FRAME_FLAG_FIELD_ORDER_MASK) == MPP_FRAME_FLAG_DEINTERLACED)
+            frame->flags |= AV_FRAME_FLAG_INTERLACED;
+        if ((mode & MPP_FRAME_FLAG_FIELD_ORDER_MASK) == MPP_FRAME_FLAG_TOP_FIRST)
+            frame->flags |= AV_FRAME_FLAG_TOP_FIELD_FIRST;
 
         mppformat = mpp_frame_get_fmt(mppframe);
         drmformat = rkmpp_get_frameformat(mppformat);
@@ -573,8 +576,6 @@ static const AVCodecHWConfigInternal *const rkmpp_hw_configs[] = {
         .flush          = rkmpp_flush, \
         .p.priv_class   = &rkmpp_##NAME##_dec_class, \
         .p.capabilities = AV_CODEC_CAP_DELAY | AV_CODEC_CAP_AVOID_PROBING | AV_CODEC_CAP_HARDWARE, \
-        .p.pix_fmts     = (const enum AVPixelFormat[]) { AV_PIX_FMT_DRM_PRIME, \
-                                                         AV_PIX_FMT_NONE}, \
         .hw_configs     = rkmpp_hw_configs, \
         .bsfs           = BSFS, \
         .p.wrapper_name = "rkmpp", \

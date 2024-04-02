@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include "libavutil/avstring.h"
 #include "libavutil/channel_layout.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 #include "libswresample/swresample.h"
 #include "audio.h"
@@ -313,7 +314,7 @@ static int config_props(AVFilterLink *link)
             pan->channel_map[i] = ch_id;
         }
 
-        av_opt_set_int(pan->swr, "uch", pan->nb_output_channels, 0);
+        av_opt_set_chlayout(pan->swr, "uchl", &pan->out_channel_layout, 0);
         swr_set_channel_mapping(pan->swr, pan->channel_map);
     } else {
         // renormalize
@@ -379,24 +380,21 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *insamples)
     swr_convert(pan->swr, outsamples->extended_data, n,
                 (void *)insamples->extended_data, n);
     av_frame_copy_props(outsamples, insamples);
-#if FF_API_OLD_CHANNEL_LAYOUT
-FF_DISABLE_DEPRECATION_WARNINGS
-    outsamples->channel_layout = outlink->channel_layout;
-    outsamples->channels = outlink->ch_layout.nb_channels;
-FF_ENABLE_DEPRECATION_WARNINGS
-#endif
-    if ((ret = av_channel_layout_copy(&outsamples->ch_layout, &outlink->ch_layout)) < 0)
+    if ((ret = av_channel_layout_copy(&outsamples->ch_layout, &outlink->ch_layout)) < 0) {
+        av_frame_free(&outsamples);
+        av_frame_free(&insamples);
         return ret;
+    }
 
-    ret = ff_filter_frame(outlink, outsamples);
     av_frame_free(&insamples);
-    return ret;
+    return ff_filter_frame(outlink, outsamples);
 }
 
 static av_cold void uninit(AVFilterContext *ctx)
 {
     PanContext *pan = ctx->priv;
     swr_free(&pan->swr);
+    av_channel_layout_uninit(&pan->out_channel_layout);
 }
 
 #define OFFSET(x) offsetof(PanContext, x)
@@ -417,13 +415,6 @@ static const AVFilterPad pan_inputs[] = {
     },
 };
 
-static const AVFilterPad pan_outputs[] = {
-    {
-        .name = "default",
-        .type = AVMEDIA_TYPE_AUDIO,
-    },
-};
-
 const AVFilter ff_af_pan = {
     .name          = "pan",
     .description   = NULL_IF_CONFIG_SMALL("Remix channels with coefficients (panning)."),
@@ -432,6 +423,6 @@ const AVFilter ff_af_pan = {
     .init          = init,
     .uninit        = uninit,
     FILTER_INPUTS(pan_inputs),
-    FILTER_OUTPUTS(pan_outputs),
+    FILTER_OUTPUTS(ff_audio_default_filterpad),
     FILTER_QUERY_FUNC(query_formats),
 };

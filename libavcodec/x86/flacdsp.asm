@@ -43,6 +43,7 @@ INIT_XMM %1
 cglobal flac_lpc_32, 5,6,5, decoded, coeffs, pred_order, qlevel, len, j
     sub    lend, pred_orderd
     jle .ret
+    movsxdifnidn pred_orderq, pred_orderd
     lea    decodedq, [decodedq+pred_orderq*4-8]
     lea    coeffsq, [coeffsq+pred_orderq*4]
     neg    pred_orderq
@@ -79,7 +80,7 @@ ALIGN 16
     movd   [decodedq+4], m1
     jg .loop_sample
 .ret:
-    REP_RET
+    RET
 %endmacro
 
 %if HAVE_XOP_EXTERNAL
@@ -133,7 +134,7 @@ align 16
     mova [outq + lenq], m%2
     add      lenq, 16
     jl .loop
-    REP_RET
+    RET
 %endmacro
 
 INIT_XMM sse2
@@ -177,7 +178,7 @@ align 16
     add      outq, mmsize*2
     sub      lend, mmsize/4
     jg .loop
-    REP_RET
+    RET
 %endmacro
 
 INIT_XMM sse2
@@ -302,7 +303,7 @@ align 16
     add      outq, mmsize*REPCOUNT
     sub      lend, mmsize/4
     jg .loop
-    REP_RET
+    RET
 %endmacro
 
 INIT_XMM ssse3

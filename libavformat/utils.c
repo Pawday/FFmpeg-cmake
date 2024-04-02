@@ -26,6 +26,7 @@
 #include "libavutil/avstring.h"
 #include "libavutil/bprint.h"
 #include "libavutil/internal.h"
+#include "libavutil/mem.h"
 #include "libavutil/thread.h"
 #include "libavutil/time.h"
 
@@ -37,6 +38,7 @@
 #if CONFIG_NETWORK
 #include "network.h"
 #endif
+#include "os_support.h"
 
 static AVMutex avformat_mutex = AV_MUTEX_INITIALIZER;
 

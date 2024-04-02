@@ -21,8 +21,10 @@
  */
 
 #include "libavutil/intreadwrite.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
+#include "filters.h"
 #include "internal.h"
 
 enum FilterMode {
@@ -71,14 +73,14 @@ typedef struct ThreadDataHueSatMetrics {
 #define FLAGS AV_OPT_FLAG_FILTERING_PARAM|AV_OPT_FLAG_VIDEO_PARAM
 
 static const AVOption signalstats_options[] = {
-    {"stat", "set statistics filters", OFFSET(filters), AV_OPT_TYPE_FLAGS, {.i64=0}, 0, INT_MAX, FLAGS, "filters"},
-        {"tout", "analyze pixels for temporal outliers",                0, AV_OPT_TYPE_CONST, {.i64=1<<FILTER_TOUT}, 0, 0, FLAGS, "filters"},
-        {"vrep", "analyze video lines for vertical line repetition",    0, AV_OPT_TYPE_CONST, {.i64=1<<FILTER_VREP}, 0, 0, FLAGS, "filters"},
-        {"brng", "analyze for pixels outside of broadcast range",       0, AV_OPT_TYPE_CONST, {.i64=1<<FILTER_BRNG}, 0, 0, FLAGS, "filters"},
-    {"out", "set video filter", OFFSET(outfilter), AV_OPT_TYPE_INT, {.i64=FILTER_NONE}, -1, FILT_NUMB-1, FLAGS, "out"},
-        {"tout", "highlight pixels that depict temporal outliers",              0, AV_OPT_TYPE_CONST, {.i64=FILTER_TOUT}, 0, 0, FLAGS, "out"},
-        {"vrep", "highlight video lines that depict vertical line repetition",  0, AV_OPT_TYPE_CONST, {.i64=FILTER_VREP}, 0, 0, FLAGS, "out"},
-        {"brng", "highlight pixels that are outside of broadcast range",        0, AV_OPT_TYPE_CONST, {.i64=FILTER_BRNG}, 0, 0, FLAGS, "out"},
+    {"stat", "set statistics filters", OFFSET(filters), AV_OPT_TYPE_FLAGS, {.i64=0}, 0, INT_MAX, FLAGS, .unit = "filters"},
+        {"tout", "analyze pixels for temporal outliers",                0, AV_OPT_TYPE_CONST, {.i64=1<<FILTER_TOUT}, 0, 0, FLAGS, .unit = "filters"},
+        {"vrep", "analyze video lines for vertical line repetition",    0, AV_OPT_TYPE_CONST, {.i64=1<<FILTER_VREP}, 0, 0, FLAGS, .unit = "filters"},
+        {"brng", "analyze for pixels outside of broadcast range",       0, AV_OPT_TYPE_CONST, {.i64=1<<FILTER_BRNG}, 0, 0, FLAGS, .unit = "filters"},
+    {"out", "set video filter", OFFSET(outfilter), AV_OPT_TYPE_INT, {.i64=FILTER_NONE}, -1, FILT_NUMB-1, FLAGS, .unit = "out"},
+        {"tout", "highlight pixels that depict temporal outliers",              0, AV_OPT_TYPE_CONST, {.i64=FILTER_TOUT}, 0, 0, FLAGS, .unit = "out"},
+        {"vrep", "highlight video lines that depict vertical line repetition",  0, AV_OPT_TYPE_CONST, {.i64=FILTER_VREP}, 0, 0, FLAGS, .unit = "out"},
+        {"brng", "highlight pixels that are outside of broadcast range",        0, AV_OPT_TYPE_CONST, {.i64=FILTER_BRNG}, 0, 0, FLAGS, .unit = "out"},
     {"c",     "set highlight color", OFFSET(rgba_color), AV_OPT_TYPE_COLOR, {.str="yellow"}, .flags=FLAGS},
     {"color", "set highlight color", OFFSET(rgba_color), AV_OPT_TYPE_COLOR, {.str="yellow"}, .flags=FLAGS},
     {NULL}
@@ -565,7 +567,7 @@ static int filter_frame8(AVFilterLink *link, AVFrame *in)
     int tothue = 0;
     int dify = 0, difu = 0, difv = 0;
     uint16_t masky = 0, masku = 0, maskv = 0;
-
+    int ret;
     int filtot[FILT_NUMB] = {0};
     AVFrame *prev;
 
@@ -588,7 +590,16 @@ static int filter_frame8(AVFilterLink *link, AVFrame *in)
 
     if (s->outfilter != FILTER_NONE) {
         out = av_frame_clone(in);
-        av_frame_make_writable(out);
+        if (!out) {
+            av_frame_free(&in);
+            return AVERROR(ENOMEM);
+        }
+        ret = ff_inlink_make_frame_writable(link, &out);
+        if (ret < 0) {
+            av_frame_free(&out);
+            av_frame_free(&in);
+            return ret;
+        }
     }
 
     ff_filter_execute(ctx, compute_sat_hue_metrics8, &td_huesat,
@@ -790,7 +801,7 @@ static int filter_frame16(AVFilterLink *link, AVFrame *in)
 
     int filtot[FILT_NUMB] = {0};
     AVFrame *prev;
-
+    int ret;
     AVFrame *sat = s->frame_sat;
     AVFrame *hue = s->frame_hue;
     const uint16_t *p_sat = (uint16_t *)sat->data[0];
@@ -810,7 +821,16 @@ static int filter_frame16(AVFilterLink *link, AVFrame *in)
 
     if (s->outfilter != FILTER_NONE) {
         out = av_frame_clone(in);
-        av_frame_make_writable(out);
+        if (!out) {
+            av_frame_free(&in);
+            return AVERROR(ENOMEM);
+        }
+        ret = ff_inlink_make_frame_writable(link, &out);
+        if (ret < 0) {
+            av_frame_free(&out);
+            av_frame_free(&in);
+            return ret;
+        }
     }
 
     ff_filter_execute(ctx, compute_sat_hue_metrics16, &td_huesat,

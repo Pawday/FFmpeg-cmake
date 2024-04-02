@@ -31,6 +31,7 @@ typedef void ID3D11Device;
 #include <ffnvcodec/nvEncodeAPI.h>
 
 #include "compat/cuda/dynlink_loader.h"
+#include "libavutil/buffer.h"
 #include "libavutil/fifo.h"
 #include "libavutil/opt.h"
 #include "hwconfig.h"
@@ -77,6 +78,20 @@ typedef void ID3D11Device;
 #define NVENC_HAVE_SINGLE_SLICE_INTRA_REFRESH
 #endif
 
+// SDK 12.1 compile time feature checks
+#if NVENCAPI_CHECK_VERSION(12, 1)
+#define NVENC_NO_DEPRECATED_RC
+#endif
+
+// SDK 12.2 compile time feature checks
+#if NVENCAPI_CHECK_VERSION(12, 2)
+#define NVENC_HAVE_NEW_BIT_DEPTH_API
+#define NVENC_HAVE_TEMPORAL_FILTER
+#define NVENC_HAVE_LOOKAHEAD_LEVEL
+#define NVENC_HAVE_UHQ_TUNING
+#define NVENC_HAVE_UNIDIR_B
+#endif
+
 typedef struct NvencSurface
 {
     NV_ENC_INPUT_PTR input_surface;
@@ -89,6 +104,14 @@ typedef struct NvencSurface
     NV_ENC_OUTPUT_PTR output_surface;
     NV_ENC_BUFFER_FORMAT format;
 } NvencSurface;
+
+typedef struct NvencFrameData
+{
+    int64_t duration;
+
+    void        *frame_opaque;
+    AVBufferRef *frame_opaque_ref;
+} NvencFrameData;
 
 typedef struct NvencDynLoadFunctions
 {
@@ -150,6 +173,12 @@ enum {
     ANY_DEVICE,
 };
 
+enum {
+    NVENC_RGB_MODE_DISABLED,
+    NVENC_RGB_MODE_420,
+    NVENC_RGB_MODE_444,
+};
+
 typedef struct NvencContext
 {
     AVClass *avclass;
@@ -167,6 +196,10 @@ typedef struct NvencContext
 
     int nb_surfaces;
     NvencSurface *surfaces;
+
+    NvencFrameData *frame_data_array;
+    int frame_data_array_nb;
+    int frame_data_array_pos;
 
     AVFifo *unused_surface_queue;
     AVFifo *output_surface_queue;
@@ -192,6 +225,8 @@ typedef struct NvencContext
     int support_dyn_bitrate;
 
     void *nvencoder;
+
+    uint32_t frame_idx_counter;
 
     int preset;
     int profile;
@@ -240,6 +275,11 @@ typedef struct NvencContext
     int udu_sei;
     int timing_info;
     int highbitdepth;
+    int max_slice_size;
+    int rgb_mode;
+    int tf_level;
+    int lookahead_level;
+    int unidir_b;
 } NvencContext;
 
 int ff_nvenc_encode_init(AVCodecContext *avctx);

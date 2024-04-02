@@ -35,6 +35,7 @@
 #include "libavutil/avassert.h"
 #include "libavutil/internal.h"
 #include "libavutil/log.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 #include "libavutil/avstring.h"
 #include "libavutil/parseutils.h"
@@ -160,7 +161,6 @@ static int segment_mux_init(AVFormatContext *s)
     oc->max_delay          = s->max_delay;
     av_dict_copy(&oc->metadata, s->metadata, 0);
     oc->opaque             = s->opaque;
-    oc->io_close           = s->io_close;
     oc->io_close2          = s->io_close2;
     oc->io_open            = s->io_open;
     oc->flags              = s->flags;
@@ -976,7 +976,8 @@ calc_times:
            av_ts2str(pkt->dts), av_ts2timestr(pkt->dts, &st->time_base));
 
     ret = ff_write_chained(seg->avf, pkt->stream_index, pkt, s,
-                           seg->initial_offset || seg->reset_timestamps || seg->avf->oformat->interleave_packet);
+                           seg->initial_offset || seg->reset_timestamps ||
+                           ffofmt(seg->avf->oformat)->interleave_packet);
 
 fail:
     /* Use st->index here as the packet returned from ff_write_chained()
@@ -1016,9 +1017,9 @@ static int seg_check_bitstream(AVFormatContext *s, AVStream *st,
 {
     SegmentContext *seg = s->priv_data;
     AVFormatContext *oc = seg->avf;
-    if (oc->oformat->check_bitstream) {
+    if (ffofmt(oc->oformat)->check_bitstream) {
         AVStream *const ost = oc->streams[st->index];
-        int ret = oc->oformat->check_bitstream(oc, ost, pkt);
+        int ret = ffofmt(oc->oformat)->check_bitstream(oc, ost, pkt);
         if (ret == 1) {
             FFStream *const  sti = ffstream(st);
             FFStream *const osti = ffstream(ost);
@@ -1039,19 +1040,19 @@ static const AVOption options[] = {
     { "segment_list",      "set the segment list filename",              OFFSET(list),    AV_OPT_TYPE_STRING, {.str = NULL},  0, 0,       E },
     { "segment_header_filename", "write a single file containing the header", OFFSET(header_filename), AV_OPT_TYPE_STRING, {.str = NULL}, 0, 0, E },
 
-    { "segment_list_flags","set flags affecting segment list generation", OFFSET(list_flags), AV_OPT_TYPE_FLAGS, {.i64 = SEGMENT_LIST_FLAG_CACHE }, 0, UINT_MAX, E, "list_flags"},
-    { "cache",             "allow list caching",                                    0, AV_OPT_TYPE_CONST, {.i64 = SEGMENT_LIST_FLAG_CACHE }, INT_MIN, INT_MAX,   E, "list_flags"},
-    { "live",              "enable live-friendly list generation (useful for HLS)", 0, AV_OPT_TYPE_CONST, {.i64 = SEGMENT_LIST_FLAG_LIVE }, INT_MIN, INT_MAX,    E, "list_flags"},
+    { "segment_list_flags","set flags affecting segment list generation", OFFSET(list_flags), AV_OPT_TYPE_FLAGS, {.i64 = SEGMENT_LIST_FLAG_CACHE }, 0, UINT_MAX, E, .unit = "list_flags"},
+    { "cache",             "allow list caching",                                    0, AV_OPT_TYPE_CONST, {.i64 = SEGMENT_LIST_FLAG_CACHE }, INT_MIN, INT_MAX,   E, .unit = "list_flags"},
+    { "live",              "enable live-friendly list generation (useful for HLS)", 0, AV_OPT_TYPE_CONST, {.i64 = SEGMENT_LIST_FLAG_LIVE }, INT_MIN, INT_MAX,    E, .unit = "list_flags"},
 
     { "segment_list_size", "set the maximum number of playlist entries", OFFSET(list_size), AV_OPT_TYPE_INT,  {.i64 = 0},     0, INT_MAX, E },
 
-    { "segment_list_type", "set the segment list type",                  OFFSET(list_type), AV_OPT_TYPE_INT,  {.i64 = LIST_TYPE_UNDEFINED}, -1, LIST_TYPE_NB-1, E, "list_type" },
-    { "flat", "flat format",     0, AV_OPT_TYPE_CONST, {.i64=LIST_TYPE_FLAT }, INT_MIN, INT_MAX, E, "list_type" },
-    { "csv",  "csv format",      0, AV_OPT_TYPE_CONST, {.i64=LIST_TYPE_CSV  }, INT_MIN, INT_MAX, E, "list_type" },
-    { "ext",  "extended format", 0, AV_OPT_TYPE_CONST, {.i64=LIST_TYPE_EXT  }, INT_MIN, INT_MAX, E, "list_type" },
-    { "ffconcat", "ffconcat format", 0, AV_OPT_TYPE_CONST, {.i64=LIST_TYPE_FFCONCAT }, INT_MIN, INT_MAX, E, "list_type" },
-    { "m3u8", "M3U8 format",     0, AV_OPT_TYPE_CONST, {.i64=LIST_TYPE_M3U8 }, INT_MIN, INT_MAX, E, "list_type" },
-    { "hls", "Apple HTTP Live Streaming compatible", 0, AV_OPT_TYPE_CONST, {.i64=LIST_TYPE_M3U8 }, INT_MIN, INT_MAX, E, "list_type" },
+    { "segment_list_type", "set the segment list type",                  OFFSET(list_type), AV_OPT_TYPE_INT,  {.i64 = LIST_TYPE_UNDEFINED}, -1, LIST_TYPE_NB-1, E, .unit = "list_type" },
+    { "flat", "flat format",     0, AV_OPT_TYPE_CONST, {.i64=LIST_TYPE_FLAT }, INT_MIN, INT_MAX, E, .unit = "list_type" },
+    { "csv",  "csv format",      0, AV_OPT_TYPE_CONST, {.i64=LIST_TYPE_CSV  }, INT_MIN, INT_MAX, E, .unit = "list_type" },
+    { "ext",  "extended format", 0, AV_OPT_TYPE_CONST, {.i64=LIST_TYPE_EXT  }, INT_MIN, INT_MAX, E, .unit = "list_type" },
+    { "ffconcat", "ffconcat format", 0, AV_OPT_TYPE_CONST, {.i64=LIST_TYPE_FFCONCAT }, INT_MIN, INT_MAX, E, .unit = "list_type" },
+    { "m3u8", "M3U8 format",     0, AV_OPT_TYPE_CONST, {.i64=LIST_TYPE_M3U8 }, INT_MIN, INT_MAX, E, .unit = "list_type" },
+    { "hls", "Apple HTTP Live Streaming compatible", 0, AV_OPT_TYPE_CONST, {.i64=LIST_TYPE_M3U8 }, INT_MIN, INT_MAX, E, .unit = "list_type" },
 
     { "segment_atclocktime",      "set segment to be cut at clocktime",  OFFSET(use_clocktime), AV_OPT_TYPE_BOOL, {.i64 = 0}, 0, 1, E},
     { "segment_clocktime_offset", "set segment clocktime offset",        OFFSET(clocktime_offset), AV_OPT_TYPE_DURATION, {.i64 = 0}, 0, 86400000000LL, E},
@@ -1085,33 +1086,33 @@ static const AVClass seg_class = {
 };
 
 #if CONFIG_SEGMENT_MUXER
-const AVOutputFormat ff_segment_muxer = {
-    .name           = "segment",
-    .long_name      = NULL_IF_CONFIG_SMALL("segment"),
+const FFOutputFormat ff_segment_muxer = {
+    .p.name          = "segment",
+    .p.long_name     = NULL_IF_CONFIG_SMALL("segment"),
+    .p.flags         = AVFMT_NOFILE|AVFMT_GLOBALHEADER,
+    .p.priv_class    = &seg_class,
     .priv_data_size = sizeof(SegmentContext),
-    .flags          = AVFMT_NOFILE|AVFMT_GLOBALHEADER,
     .init           = seg_init,
     .write_header   = seg_write_header,
     .write_packet   = seg_write_packet,
     .write_trailer  = seg_write_trailer,
     .deinit         = seg_free,
     .check_bitstream = seg_check_bitstream,
-    .priv_class     = &seg_class,
 };
 #endif
 
 #if CONFIG_STREAM_SEGMENT_MUXER
-const AVOutputFormat ff_stream_segment_muxer = {
-    .name           = "stream_segment,ssegment",
-    .long_name      = NULL_IF_CONFIG_SMALL("streaming segment muxer"),
-    .priv_data_size = sizeof(SegmentContext),
-    .flags          = AVFMT_NOFILE,
+const FFOutputFormat ff_stream_segment_muxer = {
+    .p.name          = "stream_segment,ssegment",
+    .p.long_name     = NULL_IF_CONFIG_SMALL("streaming segment muxer"),
+    .p.flags         = AVFMT_NOFILE,
+    .p.priv_class    = &seg_class,
+    .priv_data_size  = sizeof(SegmentContext),
     .init           = seg_init,
     .write_header   = seg_write_header,
     .write_packet   = seg_write_packet,
     .write_trailer  = seg_write_trailer,
     .deinit         = seg_free,
     .check_bitstream = seg_check_bitstream,
-    .priv_class     = &seg_class,
 };
 #endif

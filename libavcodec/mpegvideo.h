@@ -44,9 +44,6 @@
 #include "pixblockdsp.h"
 #include "put_bits.h"
 #include "ratecontrol.h"
-#if FF_API_FLAG_TRUNCATED
-#include "parser.h"
-#endif
 #include "mpegutils.h"
 #include "qpeldsp.h"
 #include "videodsp.h"
@@ -117,7 +114,6 @@ typedef struct MpegEncContext {
     int input_picture_number;  ///< used to set pic->display_picture_number, should not be used for/by anything else
     int coded_picture_number;  ///< used to set pic->coded_picture_number, should not be used for/by anything else
     int picture_number;       //FIXME remove, unclear definition
-    int extradata_parsed;
     int picture_in_gop_number; ///< 0-> first pic in gop, ...
     int mb_width, mb_height;   ///< number of MBs horizontally & vertically
     int mb_stride;             ///< mb_width+1 used for some arrays to allow simple addressing of left & top MBs without sig11
@@ -352,10 +348,6 @@ typedef struct MpegEncContext {
     int resync_mb_y;                 ///< y position of last resync marker
     GetBitContext last_resync_gb;    ///< used to search for the next resync marker
     int mb_num_left;                 ///< number of MBs left in this video packet (for partitioned Slices only)
-
-#if FF_API_FLAG_TRUNCATED
-    ParseContext parse_context;
-#endif
 
     /* H.263 specific */
     int gob_index;

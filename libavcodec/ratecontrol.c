@@ -26,7 +26,9 @@
  */
 
 #include "libavutil/attributes.h"
+#include "libavutil/emms.h"
 #include "libavutil/internal.h"
+#include "libavutil/mem.h"
 
 #include "avcodec.h"
 #include "ratecontrol.h"
@@ -39,8 +41,8 @@ void ff_write_pass1_stats(MpegEncContext *s)
     snprintf(s->avctx->stats_out, 256,
              "in:%d out:%d type:%d q:%d itex:%d ptex:%d mv:%d misc:%d "
              "fcode:%d bcode:%d mc-var:%"PRId64" var:%"PRId64" icount:%d skipcount:%d hbits:%d;\n",
-             s->current_picture_ptr->f->display_picture_number,
-             s->current_picture_ptr->f->coded_picture_number,
+             s->current_picture_ptr->display_picture_number,
+             s->current_picture_ptr->coded_picture_number,
              s->pict_type,
              s->current_picture.f->quality,
              s->i_tex_bits,
@@ -57,7 +59,16 @@ void ff_write_pass1_stats(MpegEncContext *s)
 
 static double get_fps(AVCodecContext *avctx)
 {
-    return 1.0 / av_q2d(avctx->time_base) / FFMAX(avctx->ticks_per_frame, 1);
+    if (avctx->framerate.num > 0 && avctx->framerate.den > 0)
+        return av_q2d(avctx->framerate);
+
+FF_DISABLE_DEPRECATION_WARNINGS
+    return 1.0 / av_q2d(avctx->time_base)
+#if FF_API_TICKS_PER_FRAME
+        / FFMAX(avctx->ticks_per_frame, 1)
+#endif
+        ;
+FF_ENABLE_DEPRECATION_WARNINGS
 }
 
 static inline double qp2bits(RateControlEntry *rce, double qp)
@@ -68,12 +79,22 @@ static inline double qp2bits(RateControlEntry *rce, double qp)
     return rce->qscale * (double)(rce->i_tex_bits + rce->p_tex_bits + 1) / qp;
 }
 
+static double qp2bits_cb(void *rce, double qp)
+{
+    return qp2bits(rce, qp);
+}
+
 static inline double bits2qp(RateControlEntry *rce, double bits)
 {
     if (bits < 0.9) {
         av_log(NULL, AV_LOG_ERROR, "bits<0.9\n");
     }
     return rce->qscale * (double)(rce->i_tex_bits + rce->p_tex_bits + 1) / bits;
+}
+
+static double bits2qp_cb(void *rce, double qp)
+{
+    return bits2qp(rce, qp);
 }
 
 static double get_diff_limited_q(MpegEncContext *s, RateControlEntry *rce, double q)
@@ -496,8 +517,8 @@ av_cold int ff_rate_control_init(MpegEncContext *s)
         NULL
     };
     static double (* const func1[])(void *, double) = {
-        (double (*)(void *, double)) bits2qp,
-        (double (*)(void *, double)) qp2bits,
+        bits2qp_cb,
+        qp2bits_cb,
         NULL
     };
     static const char * const func1_names[] = {

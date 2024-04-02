@@ -29,6 +29,7 @@
 
 #include "libavutil/avassert.h"
 #include "libavutil/channel_layout.h"
+#include "libavutil/mem.h"
 #include "avcodec.h"
 #include "codec_internal.h"
 #include "encode.h"
@@ -375,13 +376,13 @@ const FFCodec ff_adpcm_g722_encoder = {
     CODEC_LONG_NAME("G.722 ADPCM"),
     .p.type          = AVMEDIA_TYPE_AUDIO,
     .p.id            = AV_CODEC_ID_ADPCM_G722,
-    .p.capabilities  = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_SMALL_LAST_FRAME,
+    .p.capabilities  = AV_CODEC_CAP_DR1 | AV_CODEC_CAP_SMALL_LAST_FRAME |
+                       AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE,
     .priv_data_size  = sizeof(G722Context),
     .init            = g722_encode_init,
     .close           = g722_encode_close,
     FF_CODEC_ENCODE_CB(g722_encode_frame),
     .p.sample_fmts   = (const enum AVSampleFormat[]){ AV_SAMPLE_FMT_S16, AV_SAMPLE_FMT_NONE },
-    CODEC_OLD_CHANNEL_LAYOUTS(AV_CH_LAYOUT_MONO)
     .p.ch_layouts   = (const AVChannelLayout[]){
         AV_CHANNEL_LAYOUT_MONO, { 0 }
     },
