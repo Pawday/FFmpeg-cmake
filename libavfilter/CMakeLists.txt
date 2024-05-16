@@ -1,76 +1,71 @@
-cmake_minimum_required(VERSION 3.15)
+add_library(ffmpeg.avfilter.config INTERFACE)
 
-project(AVFILTER)
+list(APPEND ffmpeg.avfilter.filter_list)
 
-list(APPEND AVFILTER_ALL_HEADERS version.h)
-list(APPEND AVFILTER_ALL_HEADERS version_major.h)
 
-list(APPEND AVFILTER_ALL_HEADERS avfilter.h)
-list(APPEND AVFILTER_ALL_HEADERS buffersrc.h)
-list(APPEND AVFILTER_ALL_HEADERS buffersink.h)
+list(APPEND ffmpeg.avfilter.sources
+    buffersrc.c
+    buffersink.c
+)
 
-foreach(AVFILTER_HEADER ${AVFILTER_ALL_HEADERS})
-    file(COPY ${AVFILTER_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavfilter/)
+list(APPEND ffmpeg.avfilter.sources
+    avfilter.c
+    version.c
+    avfilter.c
+    buffersrc.h
+    framequeue.c
+    framepool.c
+    avfiltergraph.c
+    formats.c
+    audio.c
+    video.c
+    allfilters.c
+    graphparser.c
+)
+
+set(ffmpeg.avfilter.generated_directory "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(ffmpeg.avfilter.generated_include_directory "${ffmpeg.avfilter.generated_directory}/include")
+
+include(avfilter_headers.cmake)
+
+foreach(AVFILTER_HEADER ${ffmpeg.avfilter.header_names})
+    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVFILTER_HEADER}\"\n// IWYU pragma: end_exports\n")
+    file(GENERATE OUTPUT "${ffmpeg.avfilter.generated_include_directory}/libavfilter/${AVFILTER_HEADER}" CONTENT ${HEADER_CONTENT})
 endforeach()
 
-list(APPEND AVFILTER_SOURCES avfilter.c)
-list(APPEND AVFILTER_SOURCES version.c)
-list(APPEND AVFILTER_SOURCES buffersrc.c)
-list(APPEND AVFILTER_SOURCES buffersink.c)
-list(APPEND AVFILTER_SOURCES avfilter.c)
-list(APPEND AVFILTER_SOURCES buffersrc.h)
-list(APPEND AVFILTER_SOURCES framequeue.c)
-list(APPEND AVFILTER_SOURCES framepool.c)
-list(APPEND AVFILTER_SOURCES avfiltergraph.c)
-list(APPEND AVFILTER_SOURCES formats.c)
-list(APPEND AVFILTER_SOURCES audio.c)
-list(APPEND AVFILTER_SOURCES video.c)
-list(APPEND AVFILTER_SOURCES allfilters.c)
-list(APPEND AVFILTER_SOURCES graphparser.c)
 
+list(APPEND ffmpeg.avfilter.filter_list
+    ff_asrc_abuffer #standard audio filter defined in buffersrc.c
+    ff_vsrc_buffer #standard video filter defined in buffersrc.c
+    ff_asink_abuffer #standard audio filter defined in buffersink.c
+    ff_vsink_buffer #standard video filter defined in buffersink.c
+)
 
-#set(APPEND AVFILTER_REGISTERED_FILTERS_SOURCES "") #its filled by each  <filtername>_filter cmake
-
-
-
-#generating filter_list.c
-#TODO[cmake]: register all available filters
-#list(APPEND AVFILTER_REGISTERED_FILTERS_IDS filterid)
-
-
-list(APPEND AVFILTER_REGISTERED_FILTERS_IDS ff_asrc_abuffer) #standard audio filter defined in buffersrc.c
-list(APPEND AVFILTER_REGISTERED_FILTERS_IDS ff_vsrc_buffer) #standard video filter defined in buffersrc.c
-list(APPEND AVFILTER_REGISTERED_FILTERS_IDS ff_asink_abuffer) #standard audio filter defined in buffersink.c
-list(APPEND AVFILTER_REGISTERED_FILTERS_IDS ff_vsink_buffer) #standard video filter defined in buffersink.c
 
 include(vf_null_filter.cmake)
 include(vf_format_filter.cmake)
 include(vf_scale.cmake)
 
-set(FILTER_LIST_C_FILE_CONTENT)
-string(APPEND FILTER_LIST_C_FILE_CONTENT "static const AVFilter * const filter_list[] = {\n")
-
-foreach(FILTER_NAME ${AVFILTER_REGISTERED_FILTERS_IDS})
-    string(APPEND FILTER_LIST_C_FILE_CONTENT "&${FILTER_NAME},\n")
+string(APPEND ffmpeg.avfilter.filter_list_content "static const AVFilter * const filter_list[] = {\n")
+foreach(AVFILTER_NAME ${ffmpeg.avfilter.filter_list})
+    string(APPEND ffmpeg.avfilter.filter_list_content "&${AVFILTER_NAME}\,\n")
 endforeach()
+string(APPEND ffmpeg.avfilter.filter_list_content "NULL\n")
+string(APPEND ffmpeg.avfilter.filter_list_content "}\;\n")
+file(GENERATE OUTPUT "${ffmpeg.avfilter.generated_include_directory}/libavfilter/filter_list.c" CONTENT ${ffmpeg.avfilter.filter_list_content})
 
-string(APPEND FILTER_LIST_C_FILE_CONTENT "NULL\n")
-string(APPEND FILTER_LIST_C_FILE_CONTENT "}\;")
 
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavfilter/filter_list.c ${FILTER_LIST_C_FILE_CONTENT})
+add_library(ffmpeg.avfilter.headers INTERFACE)
+target_include_directories(ffmpeg.avfilter.headers INTERFACE
+    ${ffmpeg.avfilter.generated_include_directory}
+)
 
-add_library(avfilter OBJECT ${AVFILTER_SOURCES})
-target_include_directories(avfilter PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
 
-if (AVFILTER_REGISTERED_FILTERS_SOURCES)
-    target_sources(avfilter PRIVATE ${AVFILTER_REGISTERED_FILTERS_SOURCES})
-endif ()
-
-target_link_libraries(avfilter PRIVATE avutil)
-
-target_include_directories(avfilter PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated/)
-
-target_link_libraries(avfilter PRIVATE ffmpeg_config)
-target_link_libraries(avfilter PRIVATE swscale)
-
-add_library(avfilter_static STATIC $<TARGET_OBJECTS:avfilter>)
+add_library(ffmpeg.avfilter.objects OBJECT ${ffmpeg.avfilter.sources})
+set_property(TARGET ffmpeg.avfilter.objects PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+target_link_libraries(ffmpeg.avfilter.objects PRIVATE
+    ffmpeg.avfilter.headers
+    ffmpeg.avfilter.config
+    ffmpeg.avutil.config
+    ffmpeg.avutil.headers
+)

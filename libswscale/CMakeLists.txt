@@ -1,80 +1,71 @@
-cmake_minimum_required(VERSION 3.15)
+add_library(ffmpeg.swscale.config INTERFACE)
 
-project(SWSCALE)
 
-list(APPEND SWSCALE_ALL_HEADERS version.h)
-list(APPEND SWSCALE_ALL_HEADERS version_major.h)
+list(APPEND ffmpeg.swscale.sources
+    alphablend.c
+    gamma.c
+    half2float.c
+    hscale.c
+    hscale_fast_bilinear.c
+    input.c
+    #log2_tab.c
+    options.c
+    output.c
+    rgb2rgb.c
+    slice.c
+    swscale_unscaled.c
+    version.c
+    vscale.c
+    yuv2rgb.c
+)
 
-list(APPEND SWSCALE_ALL_HEADERS swscale.h)
 
-foreach(SWSCALE_HEADER ${SWSCALE_ALL_HEADERS})
-    file(COPY ${SWSCALE_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libswscale/)
+set(FFMPEG_SWSCALE_GENERATED_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(PREPEND_HACK_DIR "${FFMPEG_SWSCALE_GENERATED_DIRECTORY}/prepend_hack")
+file(REMOVE_RECURSE ${PREPEND_HACK_DIR})
+
+list(APPEND ffmpeg.swscale.sources_prepended
+    swscale.c "#include \"libavutil/internal.h\""
+    utils.c "#include \"libavutil/internal.h\""
+)
+
+
+gen_prepend_hack(ffmpeg.swscale.sources_prepended PREPEND_HACK_DIR "swscale" ffmpeg.swscale.sources)
+
+list(APPEND ffmpeg.swscale.header_names
+    rgb2rgb.h
+    swscale.h
+    swscale_internal.h
+    version.h
+    version_major.h
+)
+
+
+set(ffmpeg.swscale.gen_inc "${CMAKE_CURRENT_BINARY_DIR}/generated/include")
+
+foreach(SWSCALE_HEADER ${ffmpeg.swscale.header_names})
+    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${SWSCALE_HEADER}\"\n// IWYU pragma: end_exports\n")
+    file(GENERATE OUTPUT "${ffmpeg.swscale.gen_inc}/libswscale/${SWSCALE_HEADER}" CONTENT ${HEADER_CONTENT})
 endforeach()
 
-list(APPEND SWSCALE_SOURCES swscale.c)
-list(APPEND SWSCALE_SOURCES version.c)
-list(APPEND SWSCALE_SOURCES output.c)
-list(APPEND SWSCALE_SOURCES input.c)
-list(APPEND SWSCALE_SOURCES hscale_fast_bilinear.c)
-list(APPEND SWSCALE_SOURCES slice.c)
-list(APPEND SWSCALE_SOURCES vscale.c)
-list(APPEND SWSCALE_SOURCES gamma.c)
-list(APPEND SWSCALE_SOURCES hscale.c)
-list(APPEND SWSCALE_SOURCES options.c)
-list(APPEND SWSCALE_SOURCES utils.c)
-list(APPEND SWSCALE_SOURCES yuv2rgb.c)
-list(APPEND SWSCALE_SOURCES rgb2rgb.c)
-list(APPEND SWSCALE_SOURCES alphablend.c)
-list(APPEND SWSCALE_SOURCES swscale_unscaled.c)
 
+add_library(ffmpeg.swscale.headers INTERFACE)
+target_include_directories(ffmpeg.swscale.headers INTERFACE
+    ${ffmpeg.swscale.gen_inc}
+)
 
-#!!!!!!!!!! EVIL FUNCTION REPLACEMENT HACK FOR NONOPTIMISED COMPILERS
-if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+target_compile_definitions(ffmpeg.swscale.config INTERFACE
+    SWS_MAX_FILTER_SIZE=32
+)
 
-    set(SWSCALE_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "")
+add_library(ffmpeg.swscale.objects OBJECT ${ffmpeg.swscale.sources})
+set_property(TARGET ffmpeg.swscale.objects PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+target_link_libraries(ffmpeg.swscale.objects PRIVATE
+    ffmpeg.swscale.config
+    ffmpeg.swscale.headers
+)
 
-    string(APPEND SWSCALE_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "//THIS FILE IS PART OF EVIL HACK FOR UNOPTIMISED COMPILERS WHEN THAT FUNCTIONS ARE NOT BUILDING BECAUSE CONFIGS\n")
-
-    #TODO[cmake]: make it config depended
-
-    #if not ARCH_AARCH64 ARCH_ARM ARCH_PPC ARCH_X86 ARCH_MIPS ARCH_ALPHA
-
-    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_sws_init_swscale_ppc(void* c){}")
-    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_sws_init_swscale_x86(void* c){}")
-    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_sws_init_swscale_aarch64(void* c){}")
-    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_sws_init_swscale_arm(void* c){}")
-
-    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void* ff_yuv2rgb_init_x86(void* c){return (void*)0\;}")
-    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void* ff_yuv2rgb_init_ppc(void* c){return (void*)0\;}")
-
-    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_yuv2rgb_init_tables_ppc(void* c, const int inv_table[4], int brightness, int contrast, int saturation){}")
-
-    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void rgb2rgb_init_aarch64(void){}")
-    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void rgb2rgb_init_x86(void){}")
-
-    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_get_unscaled_swscale_ppc(void* c){}")
-    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_get_unscaled_swscale_arm(void* c){}")
-    list(APPEND SWSCALE_EMPTY_FUNCTIONS "void ff_get_unscaled_swscale_aarch64(void* c){}")
-
-
-    foreach(CONTENT ${SWSCALE_EMPTY_FUNCTIONS})
-        string(APPEND SWSCALE_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "${CONTENT}\n")
-    endforeach()
-
-    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c "${SWSCALE_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT}")
-
-endif()
-
-
-add_library(swscale OBJECT ${SWSCALE_SOURCES})
-target_include_directories(swscale PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include)
-
-add_library(swscale_static STATIC $<TARGET_OBJECTS:swscale>)
-
-target_link_libraries(swscale PRIVATE ffmpeg_config)
-target_link_libraries(swscale PRIVATE avutil)
-
-if(MSVC)
-    message(WARNING "SWSCALE: adding empty_functions.c hack for unoptimised MSVC")
-    target_sources(swscale PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c)
-endif()
+target_link_libraries(ffmpeg.swscale.objects PRIVATE
+    ffmpeg.avutil.config
+    ffmpeg.avutil.headers
+)

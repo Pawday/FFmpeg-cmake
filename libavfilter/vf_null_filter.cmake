@@ -1,3 +1,3 @@
-list(APPEND AVFILTER_REGISTERED_FILTERS_SOURCES vf_null.c)
+list(APPEND ffmpeg.avfilter.sources vf_null.c)
 
-list(APPEND AVFILTER_REGISTERED_FILTERS_IDS ff_vf_null)
+list(APPEND ffmpeg.avfilter.filter_list ff_vf_null)

@@ -1,378 +1,358 @@
-cmake_minimum_required(VERSION 3.15)
-project(avutil)
+add_library(ffmpeg.avutil.config INTERFACE)
+add_library(ffmpeg.avutil.headers INTERFACE)
+add_library(ffmpeg.avutil.objects OBJECT)
 
-set(FF_COMPAT_DIR_FOR_AVUTILS ${CMAKE_SOURCE_DIR}/compat)
-set(FF_CMAKE_MODULES_FOR_AVUTILS ${CMAKE_SOURCE_DIR}/cmake)
+list(APPEND ffmpeg.avutil.sources
+    adler32.c
+    aes.c
+    aes_ctr.c
+    ambient_viewing_environment.c
+    audio_fifo.c
+    avsscanf.c
+    avstring.c
+    base64.c
+    blowfish.c
+    bprint.c
+    buffer.c
+    camellia.c
+    cast5.c
+    channel_layout.c
+    cpu.c
+    crc.c
+    csp.c
+    des.c
+    detection_bbox.c
+    dict.c
+    display.c
+    dovi_meta.c
+    downmix_info.c
+    encryption_info.c
+    error.c
+    eval.c
+    executor.c
+    fifo.c
+    file.c
+    file_open.c
+    film_grain_params.c
+    fixed_dsp.c
+    float_dsp.c
+    hash.c
+    hdr_dynamic_metadata.c
+    hdr_dynamic_vivid_metadata.c
+    hmac.c
+    hwcontext.c
+    iamf.c
+    imgutils.c
+    integer.c
+    intmath.c
+    lfg.c
+    lls.c
+    log.c
+    log2_tab.c
+    lzo.c
+    mastering_display_metadata.c
+    mathematics.c
+    md5.c
+    mem.c
+    murmur3.c
+    opt.c
+    parseutils.c
+    pixdesc.c
+    pixelutils.c
+    random_seed.c
+    rational.c
+    rc4.c
+    reverse.c
+    ripemd.c
+    samplefmt.c
+    sha.c
+    sha512.c
+    slicethread.c
+    spherical.c
+    stereo3d.c
+    tea.c
+    threadmessage.c
+    time.c
+    timecode.c
+    timestamp.c
+    tree.c
+    twofish.c
+    utils.c
+    uuid.c
+    version.c
+    video_enc_params.c
+    video_hint.c
+    xga_font_data.c
+    xtea.c
+)
 
-include(${FF_CMAKE_MODULES_FOR_AVUTILS}/DummyConfigHeader.cmake)
-include(${FF_COMPAT_DIR_FOR_AVUTILS}/cmake/FFCompat.cmake)
+list(APPEND ffmpeg.avutil.sources_prepended
+     tx.c "#include \"libavutil/internal.h\""
+     frame.c "#include \"libavutil/internal.h\"\n#include \"libavutil/intmath.h\""
+     tx_double.c "#include \"libavutil/internal.h\"\n#include \"libavutil/intmath.h\""
+     tx_float.c "#include \"libavutil/internal.h\"\n#include \"libavutil/intmath.h\""
+     tx_int32.c "#include \"libavutil/internal.h\"\n#include \"libavutil/intmath.h\""
+)
+
+list(APPEND ffmpeg.avutil.header_names
+    adler32.h
+    aes.h
+    aes_ctr.h
+    aes_internal.h
+    ambient_viewing_environment.h
+    attributes.h
+    attributes_internal.h
+    audio_fifo.h
+    avassert.h
+    avstring.h
+    avutil.h
+    base64.h
+    blowfish.h
+    bprint.h
+    bswap.h
+    buffer.h
+    buffer_internal.h
+    camellia.h
+    cast5.h
+    channel_layout.h
+    colorspace.h
+    common.h
+    cpu.h
+    cpu_internal.h
+    crc.h
+    csp.h
+    cuda_check.h
+    des.h
+    detection_bbox.h
+    dict.h
+    dict_internal.h
+    display.h
+    dovi_meta.h
+    downmix_info.h
+    dynarray.h
+    emms.h
+    encryption_info.h
+    error.h
+    eval.h
+    executor.h
+    ffmath.h
+    fifo.h
+    file.h
+    file_open.h
+    film_grain_params.h
+    fixed_dsp.h
+    float2half.h
+    float_dsp.h
+    frame.h
+    getenv_utf8.h
+    half2float.h
+    hash.h
+    hdr_dynamic_metadata.h
+    hdr_dynamic_vivid_metadata.h
+    hmac.h
+    hwcontext.h
+    hwcontext_cuda.h
+    hwcontext_cuda_internal.h
+    hwcontext_d3d11va.h
+    hwcontext_d3d12va.h
+    hwcontext_d3d12va_internal.h
+    hwcontext_drm.h
+    hwcontext_dxva2.h
+    hwcontext_internal.h
+    hwcontext_mediacodec.h
+    hwcontext_opencl.h
+    hwcontext_qsv.h
+    hwcontext_vaapi.h
+    hwcontext_vdpau.h
+    hwcontext_videotoolbox.h
+    hwcontext_vulkan.h
+    iamf.h
+    imgutils.h
+    imgutils_internal.h
+    integer.h
+    internal.h
+    intfloat.h
+    intmath.h
+    intreadwrite.h
+    lfg.h
+    libm.h
+    lls.h
+    log.h
+    lzo.h
+    macos_kperf.h
+    macros.h
+    mastering_display_metadata.h
+    mathematics.h
+    md5.h
+    mem.h
+    mem_internal.h
+    motion_vector.h
+    murmur3.h
+    objc.h
+    opt.h
+    parseutils.h
+    pca.h
+    pixdesc.h
+    pixelutils.h
+    pixfmt.h
+    qsort.h
+    random_seed.h
+    rational.h
+    rc4.h
+    replaygain.h
+    reverse.h
+    ripemd.h
+    samplefmt.h
+    sfc64.h
+    sha.h
+    sha512.h
+    slicethread.h
+    softfloat.h
+    softfloat_ieee754.h
+    softfloat_tables.h
+    spherical.h
+    stereo3d.h
+    tablegen.h
+    tea.h
+    thread.h
+    threadmessage.h
+    time.h
+    time_internal.h
+    timecode.h
+    timer.h
+    timestamp.h
+    tree.h
+    twofish.h
+    tx.h
+    tx_priv.h
+    uuid.h
+    version.h
+    version_major.h
+    video_enc_params.h
+    video_hint.h
+    vulkan.h
+    vulkan_functions.h
+    vulkan_loader.h
+    wchar_filename.h
+    xga_font_data.h
+    xtea.h
+)
+
+# used in libswscale/utils.c directly and unconditionally
+list(APPEND ffmpeg.avutil.header_names
+    aarch64/cpu.h
+    ppc/cpu.h
+    x86/asm.h
+    x86/cpu.h
+    loongarch/cpu.h # also used when x86?
+)
+
+# YES! its not a template and just included into another libraries IDK why
+list(APPEND ffmpeg.avutil.header_names
+    half2float.c # avcodec swscale
+)
 
 
-#avutil_config - all macro for libavconfig target
-add_library(avutil_config INTERFACE)
-add_library(avutil_deps INTERFACE)
 
-FFCompatInjectAtomicsDummyHeadersToTarget(avutil_deps INTERFACE)
-InjectDummyConfigHeaderForTarget(avutil_config INTERFACE)
+set(ffmpeg.avutil.generated_directory "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(ffmpeg.avutil.generated_include_directory "${ffmpeg.avutil.generated_directory}/include")
 
-# SOURCE_FILE_NAME -> PATCHED_${SOURCE_FILE_NAME}
-function(FFUtilPatchFileTop SOURCE_FILE_NAME CONTENT_ON_TOP PATCHED_OUTPUT_FILE_LOCATION)
-    set(PATCHED_FILE ${CMAKE_CURRENT_BINARY_DIR}/patched/PATCHED_${SOURCE_FILE_NAME})
+target_compile_definitions(ffmpeg.avutil.config INTERFACE
+    ARCH_X86=0
+    HAVE_FAST_UNALIGNED=0
+    CONFIG_MEMORY_POISONING=0
+    HAVE_PRAGMA_DEPRECATED=1
+)
 
-    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_FILE_NAME} SOURCE_FILE_CONTENT)
-    string(APPEND PATCHED_SOURCE_FILE_CONTENT ${CONTENT_ON_TOP} "\n")
-    string(APPEND PATCHED_SOURCE_FILE_CONTENT ${SOURCE_FILE_CONTENT})
-
-    set(${PATCHED_OUTPUT_FILE_LOCATION} ${PATCHED_FILE} PARENT_SCOPE)
-
-    file(GENERATE OUTPUT ${PATCHED_FILE} CONTENT "${PATCHED_SOURCE_FILE_CONTENT}")
-endfunction()
-
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "HAVE_MMX2")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "HAVE_MMXEXT")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "FFMPEG_LICENSE")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "FFMPEG_CONFIGURATION")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "CONFIG_MEMORY_POISONING")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "ARCH_MIPS")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "ARCH_AARCH64")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "ARCH_ARM")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "ARCH_PPC")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "ARCH_X86")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST "ARCH_LOONGARCH")
-
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "HAVE_MMX2" "0")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "HAVE_MMXEXT" "0" )
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "FFMPEG_LICENSE" "\"LICECECECE FOR AVUTIL\"")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "FFMPEG_CONFIGURATION" "\"CMAKED\"")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "CONFIG_MEMORY_POISONING" "0")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "ARCH_MIPS" "0")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "ARCH_AARCH64" "0")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "ARCH_ARM" "0")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "ARCH_PPC" "0")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "ARCH_X86" "0")
-list(APPEND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES "ARCH_LOONGARCH" "0")
+set(PREPEND_HACK_DIR "${ffmpeg.avutil.generated_directory}/prepend_hack")
+file(REMOVE_RECURSE ${PREPEND_HACK_DIR})
+gen_prepend_hack(ffmpeg.avutil.sources_prepended PREPEND_HACK_DIR "avutil" ffmpeg.avutil.sources)
 
 
-foreach(FF_UTIL_CONFIG_MACRO_NAME ${FF_AVUTIL_REQUIRED_MACRO_LIST})
-    list(FIND FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES ${FF_UTIL_CONFIG_MACRO_NAME} CONFIG_INDEX)
-    math(EXPR CONFIG_INDEX "${CONFIG_INDEX} + 1")
-    list(GET FF_AVUTIL_REQUIRED_MACRO_LIST_DEFAULT_VALUES ${CONFIG_INDEX} CONFIG_VALUE)
-    target_compile_definitions(avutil_config INTERFACE ${FF_UTIL_CONFIG_MACRO_NAME}=${CONFIG_VALUE})
+foreach(AVUTIL_HEADER ${ffmpeg.avutil.header_names})
+    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVUTIL_HEADER}\"\n// IWYU pragma: end_exports\n")
+    file(GENERATE OUTPUT "${ffmpeg.avutil.generated_include_directory}/libavutil/${AVUTIL_HEADER}" CONTENT ${HEADER_CONTENT})
 endforeach()
 
 
-# Checking math functions
+list(APPEND ffmpeg.avutil.math.subst_map
+    atanf HAVE_ATANF
+    atan2f HAVE_ATAN2F
+    powf HAVE_POWF
+    cbrt HAVE_CBRT
+    cbrtf HAVE_CBRTF
+    copysign HAVE_COPYSIGN
+    cosf HAVE_COSF
+    erf HAVE_ERF
+    expf HAVE_EXPF
+    exp2 HAVE_EXP2
+    exp2f HAVE_EXP2F
+    isinf HAVE_ISINF
+    isnan HAVE_ISNAN
+    isfinite HAVE_ISFINITE
+    hypot HAVE_HYPOT
+    ldexpf HAVE_LDEXPF
+    llrint HAVE_LLRINT
+    llrintf HAVE_LLRINTF
+    log2 HAVE_LOG2
+    log2f HAVE_LOG2F
+    log10f HAVE_LOG10F
+    sinf HAVE_SINF
+    rint HAVE_RINT
+    lrint HAVE_LRINT
+    lrintf HAVE_LRINTF
+    round HAVE_ROUND
+    roundf HAVE_ROUNDF
+    trunc HAVE_TRUNC
+    truncf HAVE_TRUNCF
+    atanf HAVE_ATANF
+    atan2f HAVE_ATAN2F
+    powf HAVE_POWF
+    cbrt HAVE_CBRT
+    cbrtf HAVE_CBRTF
+)
+
+list(LENGTH ffmpeg.avutil.math.subst_map ffmpeg.avutil.math.subst_map_size)
+
+math(EXPR ffmpeg.avutil.math.subst_map_size2_remainder "${ffmpeg.avutil.math.subst_map_size} % 2")
+if(NOT 0 EQUAL ${ffmpeg.avutil.math.subst_map_size2_remainder})
+    message(FATAL_ERROR "ffmpeg.avutil.math.subst_map (sym <=> HAVE_<sym>) is broken")
+endif()
+math(EXPR ffmpeg.avutil.math.subst_map_size "${ffmpeg.avutil.math.subst_map_size} / 2")
+
 include(CheckSymbolExists)
 
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS atanf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS atan2f)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS isfinite)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS powf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS cbrt)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS cbrtf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS copysign)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS copysign)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS cosf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS erf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS expf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS expf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS exp2)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS exp2f)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS isinf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS isnan)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS isnan)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS isfinite)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS hypot)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS ldexpf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS llrint)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS llrintf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS log2)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS log2f)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS log2f)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS log10f)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS sinf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS lrint)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS lrintf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS round)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS roundf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS trunc)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS truncf)
-list(APPEND AVUTIL_REPLACEABLE_MATH_FUNCTIONS rint)
+foreach(MATH_F_IDX RANGE 1 ${ffmpeg.avutil.math.subst_map_size})
+    math(EXPR REAL_INDEX "${MATH_F_IDX} - 1")
+    math(EXPR KEY_INDEX "${REAL_INDEX} * 2")
+    math(EXPR VAL_INDEX "${REAL_INDEX} * 2 + 1")
+    list(GET ffmpeg.avutil.math.subst_map ${KEY_INDEX} KEY)
+    list(GET ffmpeg.avutil.math.subst_map ${VAL_INDEX} VAL)
 
-foreach(math_function ${AVUTIL_REPLACEABLE_MATH_FUNCTIONS})
-    if (UNIX)
-        set(CMAKE_REQUIRED_LIBRARIES "m")
-    endif ()
-    check_symbol_exists(${math_function} math.h ${math_function}_exist)
-    string(TOUPPER ${math_function} current_math_function_upper_cased)
-    if(${math_function}_exist)
-        list(APPEND FF_AVUTIL_MATH_LIB_CONFIG "HAVE_${current_math_function_upper_cased}=1")
+    set(CMAKE_REQUIRED_QUIET ON)
+    set(CMAKE_REQUIRED_LIBRARIES "m")
+    check_symbol_exists(${KEY} "math.h" FFMPEG_AVUTIL_MATH_${VAL})
+
+    if(FFMPEG_AVUTIL_MATH_${VAL})
+        set(FFMPEG_AVUTIL_MATH_${VAL}_CONF 1)
+        message(STATUS "[avutil] ${KEY} <=> ${VAL} ${FFMPEG_AVUTIL_MATH_${VAL}_CONF}")
     else()
-        list(APPEND FF_AVUTIL_MATH_LIB_CONFIG "HAVE_${current_math_function_upper_cased}=0")
+        set(FFMPEG_AVUTIL_MATH_${VAL}_CONF 0)
+        message(STATUS "[avutil] ${KEY} [NOT FOUND] <=> ${VAL} ${FFMPEG_AVUTIL_MATH_${VAL}_CONF}")
     endif()
-
-endforeach()
-
-foreach(MACRO ${FF_AVUTIL_MATH_LIB_CONFIG})
-    target_compile_definitions(avutil_config INTERFACE ${MACRO})
+    target_compile_definitions(ffmpeg.avutil.config INTERFACE "${VAL}=${FFMPEG_AVUTIL_MATH_${VAL}_CONF}")
 endforeach()
 
 
+target_include_directories(ffmpeg.avutil.headers INTERFACE ${ffmpeg.avutil.generated_include_directory})
 
-#TODO[cmake]: when install generate ffversion.h and avconfig.h (only for install)
+target_sources(ffmpeg.avutil.objects PRIVATE ${ffmpeg.avutil.sources})
+set_property(TARGET ffmpeg.avutil.objects PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+target_link_libraries(ffmpeg.avutil.objects PRIVATE
+    ffmpeg.avutil.config
+    ffmpeg.avutil.headers
+)
 
-#GENERATING ffversion.h
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "//configured via cmake\n")
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "")
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#ifndef AVUTIL_FFVERSION_H\n")
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#define AVUTIL_FFVERSION_H\n")
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#define FFMPEG_VERSION \"TODO\"\n") #TODO[cmake] set FFMPEG_VERSION
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/ffversion.h "#endif")
-
-
-include (TestBigEndian)
-TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
-if(IS_BIG_ENDIAN)
-    set(AV_HAVE_BIGENDIAN_DEF 1)
-else()
-    set(AV_HAVE_BIGENDIAN_DEF 0)
-endif()
-
-#GENERATING avconfig.h
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "//configured via cmake\n")
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#ifndef AVUTIL_AVCONFIG_H\n")
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#define AVUTIL_AVCONFIG_H\n")
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#define AV_HAVE_BIGENDIAN ${AV_HAVE_BIGENDIAN_DEF}\n")
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#define AV_HAVE_FAST_UNALIGNED 0\n")
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/avconfig.h "#endif \n")
-
-list(APPEND AVUTIL_ALL_HEADERS version.h)
-list(APPEND AVUTIL_ALL_HEADERS version_major.h)
-
-
-list(APPEND AVUTIL_ALL_HEADERS samplefmt.h)
-list(APPEND AVUTIL_ALL_HEADERS attributes.h)
-list(APPEND AVUTIL_ALL_HEADERS avutil.h)
-list(APPEND AVUTIL_ALL_HEADERS buffer.h)
-list(APPEND AVUTIL_ALL_HEADERS dict.h)
-list(APPEND AVUTIL_ALL_HEADERS frame.h)
-list(APPEND AVUTIL_ALL_HEADERS log.h)
-list(APPEND AVUTIL_ALL_HEADERS pixfmt.h)
-list(APPEND AVUTIL_ALL_HEADERS rational.h)
-list(APPEND AVUTIL_ALL_HEADERS avassert.h)
-list(APPEND AVUTIL_ALL_HEADERS avstring.h)
-list(APPEND AVUTIL_ALL_HEADERS bprint.h)
-list(APPEND AVUTIL_ALL_HEADERS channel_layout.h)
-list(APPEND AVUTIL_ALL_HEADERS imgutils.h)
-list(APPEND AVUTIL_ALL_HEADERS mem.h)
-list(APPEND AVUTIL_ALL_HEADERS opt.h)
-list(APPEND AVUTIL_ALL_HEADERS thread.h)
-list(APPEND AVUTIL_ALL_HEADERS common.h)
-list(APPEND AVUTIL_ALL_HEADERS macros.h)
-list(APPEND AVUTIL_ALL_HEADERS error.h)
-list(APPEND AVUTIL_ALL_HEADERS mathematics.h)
-list(APPEND AVUTIL_ALL_HEADERS intfloat.h)
-list(APPEND AVUTIL_ALL_HEADERS pixdesc.h)
-list(APPEND AVUTIL_ALL_HEADERS hwcontext.h)
-list(APPEND AVUTIL_ALL_HEADERS fifo.h)
-list(APPEND AVUTIL_ALL_HEADERS internal.h)
-list(APPEND AVUTIL_ALL_HEADERS intmath.h)
-list(APPEND AVUTIL_ALL_HEADERS timer.h)
-list(APPEND AVUTIL_ALL_HEADERS libm.h)
-list(APPEND AVUTIL_ALL_HEADERS intreadwrite.h)
-list(APPEND AVUTIL_ALL_HEADERS bswap.h)
-list(APPEND AVUTIL_ALL_HEADERS display.h)
-list(APPEND AVUTIL_ALL_HEADERS stereo3d.h)
-list(APPEND AVUTIL_ALL_HEADERS video_enc_params.h)
-list(APPEND AVUTIL_ALL_HEADERS mem_internal.h)
-list(APPEND AVUTIL_ALL_HEADERS reverse.h)
-list(APPEND AVUTIL_ALL_HEADERS film_grain_params.h)
-list(APPEND AVUTIL_ALL_HEADERS timecode.h)
-list(APPEND AVUTIL_ALL_HEADERS qsort.h)
-list(APPEND AVUTIL_ALL_HEADERS parseutils.h)
-list(APPEND AVUTIL_ALL_HEADERS time.h)
-list(APPEND AVUTIL_ALL_HEADERS timestamp.h)
-list(APPEND AVUTIL_ALL_HEADERS threadmessage.h)
-list(APPEND AVUTIL_ALL_HEADERS wchar_filename.h)
-list(APPEND AVUTIL_ALL_HEADERS cpu.h)
-list(APPEND AVUTIL_ALL_HEADERS eval.h)
-list(APPEND AVUTIL_ALL_HEADERS crc.h)
-list(APPEND AVUTIL_ALL_HEADERS color_utils.h)
-list(APPEND AVUTIL_ALL_HEADERS mastering_display_metadata.h)
-list(APPEND AVUTIL_ALL_HEADERS base64.h)
-list(APPEND AVUTIL_ALL_HEADERS dovi_meta.h)
-list(APPEND AVUTIL_ALL_HEADERS replaygain.h)
-list(APPEND AVUTIL_ALL_HEADERS spherical.h)
-list(APPEND AVUTIL_ALL_HEADERS cpu_internal.h)
-list(APPEND AVUTIL_ALL_HEADERS slicethread.h)
-list(APPEND AVUTIL_ALL_HEADERS time_internal.h)
-list(APPEND AVUTIL_ALL_HEADERS getenv_utf8.h)
-list(APPEND AVUTIL_ALL_HEADERS half2float.h)
-list(APPEND AVUTIL_ALL_HEADERS attributes_internal.h)
-list(APPEND AVUTIL_ALL_HEADERS dict_internal.h)
-list(APPEND AVUTIL_ALL_HEADERS file_open.h)
-
-foreach(AVUTIL_HEADER ${AVUTIL_ALL_HEADERS})
-    file(COPY ${AVUTIL_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavutil/)
-endforeach()
-
-
-list(APPEND AVUTIL_SOURCES samplefmt.c)
-list(APPEND AVUTIL_SOURCES utils.c)
-list(APPEND AVUTIL_SOURCES buffer.c)
-list(APPEND AVUTIL_SOURCES dict.c)
-
-#TODO: [avutil PATCHED_frame.c] Wait for ffdev add "#include internal.h" to frame.c
-FFUtilPatchFileTop(frame.c "#include <libavutil/internal.h>" FRAME_C_PATCHED)
-#list(APPEND AVUTIL_SOURCES frame.c)
-list(APPEND AVUTIL_SOURCES ${FRAME_C_PATCHED})
-
-list(APPEND AVUTIL_SOURCES log.c)
-list(APPEND AVUTIL_SOURCES rational.c)
-list(APPEND AVUTIL_SOURCES avstring.c)
-list(APPEND AVUTIL_SOURCES bprint.c)
-
-
-#TODO: [avutil PATCHED_channel_layout.c] Wait for ffdev add "#include internal.h" to opt.c
-FFUtilPatchFileTop(channel_layout.c "#include <libavutil/internal.h>" CHANNEL_LAYOUT_PATCHED)
-#list(APPEND AVUTIL_SOURCES channel_layout.c)
-list(APPEND AVUTIL_SOURCES ${CHANNEL_LAYOUT_PATCHED})
-
-list(APPEND AVUTIL_SOURCES imgutils.c)
-list(APPEND AVUTIL_SOURCES mem.c)
-
-
-#TODO: [avutil PATCHED_opt.c] Wait for ffdev add "#include internal.h" to opt.c
-FFUtilPatchFileTop(opt.c "#include <libavutil/internal.h>" OPT_C_PATCHED)
-#list(APPEND AVUTIL_SOURCES opt.c)
-list(APPEND AVUTIL_SOURCES ${OPT_C_PATCHED})
-
-list(APPEND AVUTIL_SOURCES error.c)
-list(APPEND AVUTIL_SOURCES mathematics.c)
-list(APPEND AVUTIL_SOURCES pixdesc.c)
-list(APPEND AVUTIL_SOURCES hwcontext.c)
-
-
-#TODO: [avutil PATCHED_fifo.c] Wait for ffdev add "#include internal.h" to fifo.c
-FFUtilPatchFileTop(fifo.c "#include <libavutil/internal.h>" FIFO_C_PATCHED)
-#list(APPEND AVUTIL_SOURCES fifo.c)
-list(APPEND AVUTIL_SOURCES ${FIFO_C_PATCHED})
-
-list(APPEND AVUTIL_SOURCES intmath.c)
-list(APPEND AVUTIL_SOURCES log2_tab.c)
-list(APPEND AVUTIL_SOURCES eval.c)
-list(APPEND AVUTIL_SOURCES parseutils.c)
-list(APPEND AVUTIL_SOURCES reverse.c)
-list(APPEND AVUTIL_SOURCES time.c)
-list(APPEND AVUTIL_SOURCES random_seed.c)
-list(APPEND AVUTIL_SOURCES sha.c)
-list(APPEND AVUTIL_SOURCES display.c)
-list(APPEND AVUTIL_SOURCES stereo3d.c)
-list(APPEND AVUTIL_SOURCES reverse.c)
-list(APPEND AVUTIL_SOURCES video_enc_params.c)
-list(APPEND AVUTIL_SOURCES film_grain_params.c)
-list(APPEND AVUTIL_SOURCES timecode.c)
-list(APPEND AVUTIL_SOURCES threadmessage.c)
-list(APPEND AVUTIL_SOURCES cpu.c)
-list(APPEND AVUTIL_SOURCES eval.c)
-list(APPEND AVUTIL_SOURCES crc.c)
-list(APPEND AVUTIL_SOURCES color_utils.c)
-list(APPEND AVUTIL_SOURCES mastering_display_metadata.c)
-list(APPEND AVUTIL_SOURCES base64.c)
-list(APPEND AVUTIL_SOURCES dovi_meta.c)
-list(APPEND AVUTIL_SOURCES spherical.c)
-list(APPEND AVUTIL_SOURCES file_open.c)
-list(APPEND AVUTIL_SOURCES slicethread.c)
-list(APPEND AVUTIL_SOURCES avsscanf.c)
-list(APPEND AVUTIL_SOURCES version.c)
-list(APPEND AVUTIL_SOURCES half2float.c)
-
-
-
-#!!!!!!!!!! EVIL FUNCTION REPLACEMENT HACK FOR NONOPTIMISED COMPILERS
-if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-
-    set(AVUTIL_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "")
-
-    string(APPEND AVUTIL_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "//THIS FILE IS PART OF EVIL HACK FOR UNOPTIMISED COMPILERS WHEN THAT FUNCTIONS ARE NOT BUILDING BECAUSE CONFIGS\n")
-
-    #TODO[cmake]: make it config depended
-
-    #if not ARCH_AARCH64 ARCH_ARM ARCH_PPC ARCH_X86 ARCH_MIPS ARCH_ALPHA ARCH_LOONGARCH ARCH_LOONGARCH64
-    list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_mips(void){return 0\;}")
-    list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_aarch64(void){return 0\;}")
-    list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_arm(void){return 0\;}")
-    list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_ppc(void){return 0\;}")
-    list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_x86(void){return 0\;}")
-    list(APPEND AVUTIL_EMPTY_FUNCTIONS "int ff_get_cpu_flags_loongarch(void){return 0\;}")
-
-    list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_mips(void){return 0\;}")
-    list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_aarch64(void){return 0\;}")
-    list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_arm(void){return 0\;}")
-    list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_ppc(void){return 0\;}")
-    list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_x86(void){return 0\;}")
-    list(APPEND AVUTIL_EMPTY_FUNCTIONS "size_t ff_get_cpu_max_align_loongarch(void){return 0\;}")
-
-    foreach(CONTENT ${AVUTIL_EMPTY_FUNCTIONS})
-        string(APPEND AVUTIL_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT "${CONTENT}\n")
-    endforeach()
-
-    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c "${AVUTIL_GENERATED_EMPTY_FUNCTIONS_FILE_CONTENT}")
-
-endif()
-
-add_library(avutil OBJECT ${AVUTIL_SOURCES})
-target_link_libraries(avutil PRIVATE avutil_config)
-target_link_libraries(avutil PRIVATE avutil_deps)
-
-if(MSVC)
-    message(WARNING "AVUTIL: adding empty_functions.c hack for unoptimised MSVC")
-    target_sources(avutil PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/hack/empty_functions.c)
-endif()
-
-
-
-
-target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
-
-#TODO[cmake]: -------------------------Diego's includes--------------------------------
-#swscale library required it ""!BECAUSE!""
-add_subdirectory(ppc)
-add_subdirectory(x86)
-add_subdirectory(aarch64)
-add_subdirectory(loongarch)
-
-#   At commit ea7ee4b4e381e0fa731458de0cbf740430eeb013
-#   Diego Biurrun does include libavutil/ppc/util_altivec.h file into swscale_internal.h
-#   without #ifdef HAVE_ALTIVEC ... #endif
-#   now you have to include platform specific file
-#   THANK YOU Diego
-target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/ppc/include)
-
-#   At commit e0c6cce44729d94e2a5507a4b6d031f23e8bd7b6
-#   Diego Biurrun does include libavutil/x86/asm.h and libavutil/x86/cpu.h file into libswscale/utils.c
-#   without #ifdef ARCH_X86_64 ... #endif
-#   now you have to include platform specific file
-#   THANK YOU Diego
-target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/x86/include)
-
-#   At commit 70ab2778be9c83dab84340af7e3ba83fa0f98576
-target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/aarch64/include)
-
-#   Ar commit 38cacce22a613d660d4d78e65b0ecdb7be0b908c
-target_include_directories(avutil PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/loongarch/include)
-
-
-
-
-
-add_library(avutil_static STATIC $<TARGET_OBJECTS:avutil>)
-target_include_directories(avutil_static PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
-target_link_libraries(avutil_static INTERFACE avutil_config)
-
-if (UNIX)
-    #on unix we need manually link with math library
-    #libm library on linux is only shared, and its cascades to others
-    find_library(MATH_LIBRARY NAMES m)
-    target_link_libraries(avutil_static PRIVATE ${MATH_LIBRARY})
-endif()
+target_link_libraries(ffmpeg.avutil.objects PRIVATE
+    ffmpeg.compat.headers
+)

@@ -1,4 +1,6 @@
-list(APPEND AVFILTER_REGISTERED_FILTERS_IDS ff_vf_scale)
+list(APPEND ffmpeg.avfilter.sources
+    vf_scale.c
+    scale_eval.c
+)
 
-list(APPEND AVFILTER_REGISTERED_FILTERS_SOURCES vf_scale.c)
-list(APPEND AVFILTER_REGISTERED_FILTERS_SOURCES scale_eval.c)
+list(APPEND ffmpeg.avfilter.filter_list ff_vf_scale)

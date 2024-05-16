@@ -1,124 +1,231 @@
-cmake_minimum_required(VERSION 3.15)
-
-project(avformat)
-
-list(APPEND AVFORMAT_ALL_HEADERS version.h)
-list(APPEND AVFORMAT_ALL_HEADERS version_major.h)
-
-list(APPEND AVFORMAT_ALL_HEADERS avformat.h)
-list(APPEND AVFORMAT_ALL_HEADERS avio.h)
-list(APPEND AVFORMAT_ALL_HEADERS internal.h)
-list(APPEND AVFORMAT_ALL_HEADERS id3v2.h)
-list(APPEND AVFORMAT_ALL_HEADERS id3v1.h)
-list(APPEND AVFORMAT_ALL_HEADERS os_support.h)
+add_library(ffmpeg.avformat.config INTERFACE)
+add_library(ffmpeg.avformat.headers INTERFACE)
+add_library(ffmpeg.avformat.core.objects OBJECT)
 
 
-foreach(AVFORMAT_HEADER ${AVFORMAT_ALL_HEADERS})
-    file(COPY ${AVFORMAT_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavformat)
-endforeach()
+list(APPEND FFMPEG_AVFORMAT_COMPONENTS ffmpeg.avformat.core.objects)
 
-list(APPEND AVFORMAT_SOURCES avformat.c)
-list(APPEND AVFORMAT_SOURCES version.c)
-list(APPEND AVFORMAT_SOURCES utils.c)
-list(APPEND AVFORMAT_SOURCES mux.c)
-list(APPEND AVFORMAT_SOURCES demux.c)
-list(APPEND AVFORMAT_SOURCES allformats.c)
-list(APPEND AVFORMAT_SOURCES aviobuf.c)
-list(APPEND AVFORMAT_SOURCES avio.c)
-list(APPEND AVFORMAT_SOURCES options.c)
-list(APPEND AVFORMAT_SOURCES format.c)
-list(APPEND AVFORMAT_SOURCES id3v2.c)
-list(APPEND AVFORMAT_SOURCES id3v1.c)
-list(APPEND AVFORMAT_SOURCES protocols.c)
-list(APPEND AVFORMAT_SOURCES metadata.c)
-list(APPEND AVFORMAT_SOURCES dump.c)
-list(APPEND AVFORMAT_SOURCES sdp.c)
-list(APPEND AVFORMAT_SOURCES seek.c)
-list(APPEND AVFORMAT_SOURCES rawdec.c)
-list(APPEND AVFORMAT_SOURCES to_upper4.c)
-list(APPEND AVFORMAT_SOURCES rawenc.c)
-list(APPEND AVFORMAT_SOURCES mux_utils.c)
-list(APPEND AVFORMAT_SOURCES demux_utils.c)
-
-#set(APPEND AVFORMAT_REGISTERED_PROTOCOLS_SOURCES "") #its filled by each <protoname>_proto cmake script
-
-#set(APPEND AVFORMAT_REGISTERED_FORMATS_SOURCES "") #its filled by each  <formatname>_format cmake
+list(APPEND ffmpeg.avformat.core.sources
+    allformats.c
+    url.c
+    version.c
+    utils.c
+    mux.c
+    avio.c
+    aviobuf.c
+    options.c
+    format.c
+    id3v1.c
+    protocols.c
+    metadata.c
+    sdp.c
+    seek.c
+    rawdec.c
+    demux.c
+    to_upper4.c
+    rawenc.c
+    mux_utils.c
+    demux_utils.c
+    avio.c
+)
 
 
-#TODO[cmake]: register all muxers and demuxers
-
-include(h264raw_format.cmake)
-include(img2_format.cmake)
-
-#generating muxer_list.c
-#list(APPEND AVFORMAT_REGISTERED_MUXER_LIST_IDS muxer_id)
-
-set(MUXER_LIST_C_FILE_CONTENT)
-string(APPEND MUXER_LIST_C_FILE_CONTENT "static const AVOutputFormat * const muxer_list[] = {\n")
-
-foreach(MUXER_NAME ${AVFORMAT_REGISTERED_MUXER_LIST_IDS})
-    string(APPEND MUXER_LIST_C_FILE_CONTENT "&${MUXER_NAME},\n")
-endforeach()
-
-string(APPEND MUXER_LIST_C_FILE_CONTENT "NULL\n")
-string(APPEND MUXER_LIST_C_FILE_CONTENT "}\;")
-
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavformat/muxer_list.c ${MUXER_LIST_C_FILE_CONTENT})
-
-#generating demuxer_list.c
-
-#list(APPEND AVFORMAT_REGISTERED_DEMUXER_LIST_IDS muxer_id)
-
-set(DEMUXER_LIST_C_FILE_CONTENT)
-string(APPEND DEMUXER_LIST_C_FILE_CONTENT "static const AVInputFormat * const demuxer_list[] = {\n")
-
-foreach(DEMUXER_NAME ${AVFORMAT_REGISTERED_DEMUXER_LIST_IDS})
-    string(APPEND DEMUXER_LIST_C_FILE_CONTENT "&${DEMUXER_NAME},\n")
-endforeach()
-
-string(APPEND DEMUXER_LIST_C_FILE_CONTENT "NULL\n")
-string(APPEND DEMUXER_LIST_C_FILE_CONTENT "}\;")
-
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavformat/demuxer_list.c ${DEMUXER_LIST_C_FILE_CONTENT})
+list(APPEND ffmpeg.avformat.core.sources_prepended
+    avformat.c "#include \"libavutil/internal.h\""
+    dump.c "#include \"libavutil/internal.h\""
+    id3v2.c "#include \"libavutil/internal.h\""
+)
 
 
-#generating protocol_list.c
-#TODO: [avformat] register protocols
-#list(APPEND AVFORMAT_REGISTERED_PROTOCOLS_LIST_IDS protocol_id)
+list(APPEND ffmpeg.avformat.header_names
+    aiff.h
+    apetag.h
+    argo_asf.h
+    asf.h
+    asfcrypt.h
+    ast.h
+    av1.h
+    avc.h
+    avformat.h
+    avi.h
+    avio.h
+    avio_internal.h
+    avlanguage.h
+    caf.h
+    dash.h
+    demux.h
+    dovi_isom.h
+    dv.h
+    dvdclut.h
+    evc.h
+    ffmeta.h
+    flac_picture.h
+    flacenc.h
+    flv.h
+    gxf.h
+    hevc.h
+    hls_sample_encryption.h
+    hlsplaylist.h
+    http.h
+    httpauth.h
+    iamf.h
+    iamf_parse.h
+    iamf_reader.h
+    iamf_writer.h
+    id3v1.h
+    id3v2.h
+    imf.h
+    img2.h
+    internal.h
+    ip.h
+    ircam.h
+    isom.h
+    lrc.h
+    matroska.h
+    metadata.h
+    mms.h
+    mov_chan.h
+    movenc.h
+    movenc_ttml.h
+    movenccenc.h
+    mpeg.h
+    mpegts.h
+    mux.h
+    mxf.h
+    network.h
+    nut.h
+    oggdec.h
+    oma.h
+    options_table.h
+    os_support.h
+    pcm.h
+    qtpalette.h
+    rawdec.h
+    rawenc.h
+    rawutils.h
+    rdt.h
+    replaygain.h
+    riff.h
+    rm.h
+    rmsipr.h
+    rso.h
+    rtmp.h
+    rtmpcrypt.h
+    rtmpdh.h
+    rtmppkt.h
+    rtp.h
+    rtpdec.h
+    rtpdec_formats.h
+    rtpenc.h
+    rtpenc_chain.h
+    rtpproto.h
+    rtsp.h
+    rtspcodes.h
+    sauce.h
+    smjpeg.h
+    sox.h
+    spdif.h
+    srtp.h
+    subtitles.h
+    swf.h
+    tee_common.h
+    tls.h
+    ttmlenc.h
+    url.h
+    urldecode.h
+    version.h
+    version_major.h
+    voc.h
+    vorbiscomment.h
+    vpcc.h
+    vvc.h
+    w64.h
+    wtv.h
+    wv.h
+    yuv4mpeg.h
+)
 
 
 include(file_proto.cmake)
+include(h264raw_format.cmake)
+include(img2_format.cmake)
 
 
-set(PROTOCOL_LIST_C_FILE_CONTENT)
-string(APPEND PROTOCOL_LIST_C_FILE_CONTENT "static const URLProtocol * const url_protocols[] = {\n")
+set(FFMPEG_AVFORMAT_GENERATED_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(PREPEND_HACK_DIR "${FFMPEG_AVFORMAT_GENERATED_DIRECTORY}/prepend_hack")
+file(REMOVE_RECURSE ${PREPEND_HACK_DIR})
 
-foreach(PROTOCOL_NAME ${AVFORMAT_REGISTERED_PROTOCOLS_LIST_IDS})
-    string(APPEND PROTOCOL_LIST_C_FILE_CONTENT "&${PROTOCOL_NAME},\n")
+
+gen_prepend_hack(ffmpeg.avformat.core.sources_prepended PREPEND_HACK_DIR "avformat" ffmpeg.avformat.core.sources)
+
+
+list(APPEND ffmpeg.avformat.muxer_list)
+list(APPEND ffmpeg.avformat.demuxer_list)
+list(APPEND ffmpeg.avformat.protocol_list)
+
+
+set(ffmpeg.avformat.generated_directory "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(ffmpeg.avformat.generated_include_directory "${ffmpeg.avformat.generated_directory}/include")
+
+foreach(AVFORMAT_HEADER ${ffmpeg.avformat.header_names})
+    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVFORMAT_HEADER}\"\n// IWYU pragma: end_exports\n")
+    file(GENERATE OUTPUT "${ffmpeg.avformat.generated_include_directory}/libavformat/${AVFORMAT_HEADER}" CONTENT ${HEADER_CONTENT})
 endforeach()
 
-string(APPEND PROTOCOL_LIST_C_FILE_CONTENT "NULL\n")
-string(APPEND PROTOCOL_LIST_C_FILE_CONTENT "}\;")
-
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavformat/protocol_list.c ${PROTOCOL_LIST_C_FILE_CONTENT})
-
-
-add_library(avformat OBJECT ${AVFORMAT_SOURCES})
-target_include_directories(avformat PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
-target_include_directories(avformat PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated/)
-
-if (AVFORMAT_REGISTERED_PROTOCOLS_SOURCES)
-    target_sources(avformat PRIVATE ${AVFORMAT_REGISTERED_PROTOCOLS_SOURCES})
-endif ()
-
-if (AVFORMAT_REGISTERED_FORMATS_SOURCES)
-    target_sources(avformat PRIVATE ${AVFORMAT_REGISTERED_FORMATS_SOURCES})
-endif ()
-
-add_library(avformat_static STATIC $<TARGET_OBJECTS:avformat>)
 
 
 
-target_link_libraries(avformat PRIVATE ffmpeg_config)
-target_link_libraries(avformat PRIVATE avutil)
-target_link_libraries(avformat PRIVATE avcodec)
+#generating muxer_list.c
+string(APPEND ffmpeg.avformat.muxer_list_content "const FFOutputFormat * const muxer_list[] = {\n")
+foreach(MUXER_NAME ${ffmpeg.avformat.muxer_list})
+    string(APPEND ffmpeg.avformat.muxer_list_content "&${MUXER_NAME}\,\n")
+endforeach()
+string(APPEND ffmpeg.avformat.muxer_list_content "NULL\n")
+string(APPEND ffmpeg.avformat.muxer_list_content "}\;\n")
+file(GENERATE OUTPUT "${ffmpeg.avformat.generated_include_directory}/libavformat/muxer_list.c" CONTENT ${ffmpeg.avformat.muxer_list_content})
+
+
+#generating demuxer_list.c
+string(APPEND ffmpeg.avformat.demuxer_list_content "const FFInputFormat * const demuxer_list[] = {\n")
+foreach(DEMUXER_NAME ${ffmpeg.avformat.demuxer_list})
+    string(APPEND ffmpeg.avformat.demuxer_list_content "&${DEMUXER_NAME}\,\n")
+endforeach()
+string(APPEND ffmpeg.avformat.demuxer_list_content "NULL\n")
+string(APPEND ffmpeg.avformat.demuxer_list_content "}\;\n")
+file(GENERATE OUTPUT "${ffmpeg.avformat.generated_include_directory}/libavformat/demuxer_list.c" CONTENT ${ffmpeg.avformat.demuxer_list_content})
+
+
+#generating protocol_list.c
+string(APPEND ffmpeg.avformat.protocol_list_content "const URLProtocol * const url_protocols[] = {\n")
+foreach(PROTO_NAME ${ffmpeg.avformat.protocol_list})
+    string(APPEND ffmpeg.avformat.protocol_list_content "&${PROTO_NAME}\,\n")
+endforeach()
+string(APPEND ffmpeg.avformat.protocol_list_content "NULL\n")
+string(APPEND ffmpeg.avformat.protocol_list_content "}\;\n")
+file(GENERATE OUTPUT "${ffmpeg.avformat.generated_include_directory}/libavformat/protocol_list.c" CONTENT ${ffmpeg.avformat.protocol_list_content})
+
+target_include_directories(ffmpeg.avformat.headers INTERFACE
+    ${ffmpeg.avformat.generated_include_directory}
+)
+
+
+target_sources(ffmpeg.avformat.core.objects PRIVATE ${ffmpeg.avformat.core.sources})
+
+foreach(FFMPEG_AVFORMAT_COMPONENT ${FFMPEG_AVFORMAT_COMPONENTS})
+    set_property(TARGET ${FFMPEG_AVFORMAT_COMPONENT} PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+    target_link_libraries(${FFMPEG_AVFORMAT_COMPONENT} PRIVATE
+        ffmpeg.avformat.config
+        ffmpeg.avformat.headers
+        ffmpeg.avutil.config
+        ffmpeg.avutil.headers
+        ffmpeg.avcodec.config
+        ffmpeg.avcodec.headers
+    )
+endforeach()
+
+set(FFMPEG_AVFORMAT_COMPONENTS ${FFMPEG_AVFORMAT_COMPONENTS} PARENT_SCOPE)
+
+
+foreach(FFMPEG_AVFORMAT_COMPONENT ${FFMPEG_AVFORMAT_COMPONENTS})
+    message(STATUS "[avformat] Built component ${FFMPEG_AVFORMAT_COMPONENT}")
+endforeach()
