@@ -56,17 +56,17 @@ include(avcodec_headers.cmake)
 include(h264.cmake)
 include(bmp.cmake)
 
-set(ffmpeg.avcodec.generated_include_directory "${FFMPEG_AVCODEC_GENERATED_DIRECTORY}/include")
+set(AVCODEC_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_AVCODEC_GENERATED_DIRECTORY}/include")
 
 foreach(AVCODEC_HEADER ${ffmpeg.avcodec.header_names})
     set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVCODEC_HEADER}\"\n// IWYU pragma: end_exports\n")
-    file(GENERATE OUTPUT "${ffmpeg.avcodec.generated_include_directory}/libavcodec/${AVCODEC_HEADER}" CONTENT ${HEADER_CONTENT})
+    file(GENERATE OUTPUT "${AVCODEC_GENERATED_INCLUDE_DIRECTORY}/libavcodec/${AVCODEC_HEADER}" CONTENT ${HEADER_CONTENT})
 endforeach()
 
 
 #generating bsf_list.c
 message(WARNING "TODO: generate libavcodec/bsf_list.c more properly")
-file(GENERATE OUTPUT "${ffmpeg.avcodec.generated_include_directory}/libavcodec/bsf_list.c" CONTENT "const FFBitStreamFilter *bitstream_filters[] = {NULL};")
+file(GENERATE OUTPUT "${AVCODEC_GENERATED_INCLUDE_DIRECTORY}/libavcodec/bsf_list.c" CONTENT "const FFBitStreamFilter *bitstream_filters[] = {NULL};")
 
 
 #generating parser_list.c
@@ -76,7 +76,7 @@ foreach(AVPARSER_NAME ${FFMPEG_AVCODEC_PARSER_LIST})
 endforeach()
 string(APPEND FFMPEG_AVCODEC_PARSER_LIST_CONTENT "NULL\n")
 string(APPEND FFMPEG_AVCODEC_PARSER_LIST_CONTENT "}\;\n")
-file(GENERATE OUTPUT "${ffmpeg.avcodec.generated_include_directory}/libavcodec/parser_list.c" CONTENT ${FFMPEG_AVCODEC_PARSER_LIST_CONTENT})
+file(GENERATE OUTPUT "${AVCODEC_GENERATED_INCLUDE_DIRECTORY}/libavcodec/parser_list.c" CONTENT ${FFMPEG_AVCODEC_PARSER_LIST_CONTENT})
 
 
 #generating codec_list.c
@@ -86,7 +86,7 @@ foreach(AVCODEC_NAME ${FFMPEG_AVCODEC_CODEC_LIST})
 endforeach()
 string(APPEND FFMPEG_AVCODEC_CODEC_LIST_CONTENT "NULL\n")
 string(APPEND FFMPEG_AVCODEC_CODEC_LIST_CONTENT "}\;\n")
-file(GENERATE OUTPUT "${ffmpeg.avcodec.generated_include_directory}/libavcodec/codec_list.c" CONTENT ${FFMPEG_AVCODEC_CODEC_LIST_CONTENT})
+file(GENERATE OUTPUT "${AVCODEC_GENERATED_INCLUDE_DIRECTORY}/libavcodec/codec_list.c" CONTENT ${FFMPEG_AVCODEC_CODEC_LIST_CONTENT})
 
 
 
@@ -99,7 +99,7 @@ target_compile_definitions(ffmpeg.avcodec.config INTERFACE
 )
 
 target_include_directories(ffmpeg.avcodec.headers INTERFACE
-    ${ffmpeg.avcodec.generated_include_directory}
+    ${AVCODEC_GENERATED_INCLUDE_DIRECTORY}
 )
 
 target_sources(ffmpeg.avcodec.core.objects PRIVATE ${ffmpeg.avcodec.core.sources})

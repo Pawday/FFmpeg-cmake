@@ -274,6 +274,14 @@ foreach(AVUTIL_HEADER ${ffmpeg.avutil.header_names})
     file(GENERATE OUTPUT "${ffmpeg.avutil.generated_include_directory}/libavutil/${AVUTIL_HEADER}" CONTENT ${HEADER_CONTENT})
 endforeach()
 
+set(FFMPEG_AVUTIL_GENERATED_HEADERS
+    "avconfig.h"
+    "ffversion.h"
+)
+foreach(HEADER ${FFMPEG_AVUTIL_GENERATED_HEADERS})
+    file(GENERATE OUTPUT "${ffmpeg.avutil.generated_include_directory}/libavutil/${HEADER}" CONTENT "")
+endforeach()
+
 
 list(APPEND ffmpeg.avutil.math.subst_map
     atanf HAVE_ATANF
