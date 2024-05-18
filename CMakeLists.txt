@@ -42,7 +42,7 @@ function(gen_prepend_hack SOURCE_PATCH_MAP WORKING_DIR MODULE_NAME OUTPUT_LIST)
 endfunction()
 
 
-project(FFMPEG C)
+project(FFMPEG VERSION 6.1.1 LANGUAGES C)
 
 add_library(ffmpeg.global_config INTERFACE)
 target_compile_definitions(ffmpeg.global_config INTERFACE
@@ -50,6 +50,7 @@ target_compile_definitions(ffmpeg.global_config INTERFACE
     CC_IDENT="${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}"
     FFMPEG_CONFIGURATION="CMake"
     FFMPEG_LICENSE="AAASD"
+    FFMPEG_VERSION="${CMAKE_PROJECT_VERSION}"
 
     HAVE_BIGENDIAN=0
     HAVE_THREADS=0
@@ -68,10 +69,11 @@ target_compile_definitions(ffmpeg.global_config INTERFACE
 
     CONFIG_AVUTIL=1
     CONFIG_AVCODEC=1
-    CONFIG_SWSCALE=1
-    CONFIG_AVFILTER=1
     CONFIG_AVFORMAT=1
-    CONFIG_AVDEVICE=0
+    CONFIG_AVFILTER=1
+    CONFIG_AVDEVICE=1
+
+    CONFIG_SWSCALE=1
     CONFIG_SWRESAMPLE=0
     CONFIG_POSTPROC=0
 
@@ -98,22 +100,38 @@ target_include_directories(ffmpeg.global_config INTERFACE ${ffmpeg.config_header
 add_subdirectory(compat)
 add_subdirectory(libavutil)
 add_subdirectory(libavcodec)
-foreach(AVCODEC_COMPONENT_TARGET ${FFMPEG_AVCODEC_COMPONENTS})
-    if (NOT TARGET ${AVCODEC_COMPONENT_TARGET})
-        message(FATAL_ERROR "AVCODEC_COMPONENT_TARGET: ${AVCODEC_COMPONENT_TARGET} is not an existing target")
-    endif()
-endforeach()
 
 message(WARNING "TODO: Watch ffmpeg devs fix avcodec <=> avutil cycle in libavutil/hdr_dynamic_metadata.c")
 target_link_libraries(ffmpeg.avutil.objects PRIVATE ffmpeg.avcodec.headers)
 
 add_subdirectory(libavformat)
 add_subdirectory(libavfilter)
+add_subdirectory(libavdevice)
 add_subdirectory(libswscale)
 
 add_subdirectory(fftools)
 
 add_subdirectory(doc/examples)
+
+
+foreach(AVCODEC_COMPONENT_TARGET ${FFMPEG_AVCODEC_COMPONENTS})
+    if (NOT TARGET ${AVCODEC_COMPONENT_TARGET})
+        message(FATAL_ERROR "AVCODEC_COMPONENT_TARGET: ${AVCODEC_COMPONENT_TARGET} is not an existing target")
+    endif()
+endforeach()
+
+foreach(AVFORMAT_COMPONENT_TARGET ${FFMPEG_AVFORMAT_COMPONENTS})
+    if (NOT TARGET ${AVFORMAT_COMPONENT_TARGET})
+        message(FATAL_ERROR "AVFORMAT_COMPONENT_TARGET: ${AVFORMAT_COMPONENT_TARGET} is not an existing target")
+    endif()
+endforeach()
+
+foreach(AVDEVICE_COMPONENT_TARGET ${FFMPEG_AVDEVICE_COMPONENTS})
+    if (NOT TARGET ${AVDEVICE_COMPONENT_TARGET})
+        message(FATAL_ERROR "AVDEVICE_COMPONENT_TARGET: ${AVDEVICE_COMPONENT_TARGET} is not an existing target")
+    endif()
+endforeach()
+
 
 target_link_libraries(ffmpeg.avutil.objects PRIVATE ffmpeg.global_config)
 foreach(AVCODEC_COMPONENT_TARGET ${FFMPEG_AVCODEC_COMPONENTS})
@@ -121,6 +139,9 @@ foreach(AVCODEC_COMPONENT_TARGET ${FFMPEG_AVCODEC_COMPONENTS})
 endforeach()
 foreach(AVFORMAT_COMPONENT_TARGET ${FFMPEG_AVFORMAT_COMPONENTS})
     target_link_libraries(${AVFORMAT_COMPONENT_TARGET} PRIVATE ffmpeg.global_config)
+endforeach()
+foreach(AVDEVICE_COMPONENT_TARGET ${FFMPEG_AVDEVICE_COMPONENTS})
+    target_link_libraries(${AVDEVICE_COMPONENT_TARGET} PRIVATE ffmpeg.global_config)
 endforeach()
 target_link_libraries(ffmpeg.avfilter.objects PRIVATE ffmpeg.global_config)
 target_link_libraries(ffmpeg.swscale.objects PRIVATE ffmpeg.global_config)
@@ -155,6 +176,20 @@ foreach(AVFORMAT_COMPONENT_TARGET ${FFMPEG_AVFORMAT_COMPONENTS})
     target_sources(ffmpeg.avformat.static PRIVATE $<TARGET_OBJECTS:${AVFORMAT_COMPONENT_TARGET}>)
 endforeach()
 
+# AVDEVICE
+add_library(ffmpeg.avdevice.shared SHARED)
+target_link_libraries(ffmpeg.avdevice.shared PRIVATE
+    ffmpeg.avutil.shared
+    ffmpeg.avcodec.shared
+    ffmpeg.avformat.shared
+)
+add_library(ffmpeg.avdevice.static STATIC)
+
+foreach(AVDEVICE_COMPONENT_TARGET ${FFMPEG_AVDEVICE_COMPONENTS})
+    target_sources(ffmpeg.avdevice.shared PRIVATE $<TARGET_OBJECTS:${AVDEVICE_COMPONENT_TARGET}>)
+    target_sources(ffmpeg.avdevice.static PRIVATE $<TARGET_OBJECTS:${AVDEVICE_COMPONENT_TARGET}>)
+endforeach()
+
 
 
 # SWSCALE
@@ -183,6 +218,10 @@ target_link_libraries(ffmpeg.fftools.ffmpeg.objects PRIVATE
     ffmpeg.avcodec.headers
     ffmpeg.avformat.config
     ffmpeg.avformat.headers
+    ffmpeg.avdevice.config
+    ffmpeg.avdevice.headers
+    ffmpeg.avfilter.config
+    ffmpeg.avfilter.headers
 )
 
 add_executable(ffmpeg $<TARGET_OBJECTS:ffmpeg.fftools.ffmpeg.objects>)
@@ -190,8 +229,9 @@ target_link_libraries(ffmpeg PRIVATE
     ffmpeg.avutil.shared
     ffmpeg.avcodec.shared
     ffmpeg.avformat.shared
-    ffmpeg.swscale.shared
+    ffmpeg.avdevice.shared
     ffmpeg.avfilter.shared
+    ffmpeg.swscale.shared
 )
 
 
@@ -200,6 +240,7 @@ find_library(LIB_MATH m REQUIRED)
 target_link_libraries(ffmpeg.avutil.shared PRIVATE ${LIB_MATH})
 target_link_libraries(ffmpeg.avcodec.shared PRIVATE ${LIB_MATH})
 target_link_libraries(ffmpeg.avformat.shared PRIVATE ${LIB_MATH})
+target_link_libraries(ffmpeg.avdevice.shared PRIVATE ${LIB_MATH})
 target_link_libraries(ffmpeg.swscale.shared PRIVATE ${LIB_MATH})
 target_link_libraries(ffmpeg.avfilter.shared PRIVATE ${LIB_MATH})
 target_link_libraries(ffmpeg PRIVATE ${LIB_MATH})
@@ -214,18 +255,21 @@ if(${LINKER_USE_NO_UNDEFINED})
     target_link_options(ffmpeg.avutil.shared PRIVATE "-Wl,--no-undefined")
     target_link_options(ffmpeg.avcodec.shared PRIVATE "-Wl,--no-undefined")
     target_link_options(ffmpeg.avformat.shared PRIVATE "-Wl,--no-undefined")
-    target_link_options(ffmpeg.swscale.shared PRIVATE "-Wl,--no-undefined")
+    target_link_options(ffmpeg.avdevice.shared PRIVATE "-Wl,--no-undefined")
     target_link_options(ffmpeg.avfilter.shared PRIVATE "-Wl,--no-undefined")
+    target_link_options(ffmpeg.swscale.shared PRIVATE "-Wl,--no-undefined")
 endif()
 
 set_property(TARGET ffmpeg.avutil.shared PROPERTY OUTPUT_NAME "avutil")
-set_property(TARGET ffmpeg.avformat.shared PROPERTY OUTPUT_NAME "avformat")
 set_property(TARGET ffmpeg.avcodec.shared PROPERTY OUTPUT_NAME "avcodec")
-set_property(TARGET ffmpeg.swscale.shared PROPERTY OUTPUT_NAME "swscale")
+set_property(TARGET ffmpeg.avformat.shared PROPERTY OUTPUT_NAME "avformat")
+set_property(TARGET ffmpeg.avdevice.shared PROPERTY OUTPUT_NAME "avdevice")
 set_property(TARGET ffmpeg.avfilter.shared PROPERTY OUTPUT_NAME "avfilter")
+set_property(TARGET ffmpeg.swscale.shared PROPERTY OUTPUT_NAME "swscale")
 set(ffmpeg.avutil.static.artefact_name "avutil")
 set(ffmpeg.avcodec.static.artefact_name "avcodec")
 set(ffmpeg.avformat.static.artefact_name "avformat")
+set(ffmpeg.avdevice.static.artefact_name "avdevice")
 set(ffmpeg.avfilter.static.artefact_name "avfilter")
 set(ffmpeg.swscale.static.artefact_name "swscale")
 set(APPEND_STATIC_TO_ARTEFACT_NAME FALSE)
@@ -236,14 +280,16 @@ if(${APPEND_STATIC_TO_ARTEFACT_NAME})
     set(ffmpeg.avutil.static.artefact_name "avutil_static")
     set(ffmpeg.avcodec.static.artefact_name "avcodec_static")
     set(ffmpeg.avformat.static.artefact_name "avformat_static")
+    set(ffmpeg.avdevice.static.artefact_name "avdevice_static")
     set(ffmpeg.avfilter.static.artefact_name "avfilter_static")
     set(ffmpeg.swscale.static.artefact_name "swscale_static")
 endif()
 set_property(TARGET ffmpeg.avutil.static PROPERTY OUTPUT_NAME ${ffmpeg.avutil.static.artefact_name})
 set_property(TARGET ffmpeg.avcodec.static PROPERTY OUTPUT_NAME ${ffmpeg.avcodec.static.artefact_name})
 set_property(TARGET ffmpeg.avformat.static PROPERTY OUTPUT_NAME ${ffmpeg.avformat.static.artefact_name})
-set_property(TARGET ffmpeg.swscale.static PROPERTY OUTPUT_NAME ${ffmpeg.swscale.static.artefact_name})
+set_property(TARGET ffmpeg.avdevice.static PROPERTY OUTPUT_NAME ${ffmpeg.avdevice.static.artefact_name})
 set_property(TARGET ffmpeg.avfilter.static PROPERTY OUTPUT_NAME ${ffmpeg.avfilter.static.artefact_name})
+set_property(TARGET ffmpeg.swscale.static PROPERTY OUTPUT_NAME ${ffmpeg.swscale.static.artefact_name})
 
 
 set(FFMPEG_DISABLE_WARNINGS_DEFAULT 1)
@@ -261,6 +307,9 @@ if(FFMPEG_DISABLE_WARNINGS)
     endforeach()
     foreach(AVFORMAT_COMPONENT_TARGET ${FFMPEG_AVFORMAT_COMPONENTS})
         target_compile_options(${AVFORMAT_COMPONENT_TARGET} PRIVATE "-w")
+    endforeach()
+    foreach(AVDEVICE_COMPONENT_TARGET ${FFMPEG_AVDEVICE_COMPONENTS})
+        target_compile_options(${AVDEVICE_COMPONENT_TARGET} PRIVATE "-w")
     endforeach()
     target_compile_options(ffmpeg.avfilter.objects PRIVATE "-w")
     target_compile_options(ffmpeg.swscale.objects PRIVATE "-w")

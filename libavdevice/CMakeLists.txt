@@ -1,60 +1,72 @@
-cmake_minimum_required(VERSION 3.15)
+add_library(ffmpeg.avdevice.config INTERFACE)
+add_library(ffmpeg.avdevice.headers INTERFACE)
+add_library(ffmpeg.avdevice.core.objects OBJECT)
 
-project(AVDEVICE)
 
-list(APPEND AVDEVICE_ALL_HEADERS avdevice.h)
-list(APPEND AVDEVICE_ALL_HEADERS version.h)
-list(APPEND AVDEVICE_ALL_HEADERS version_major.h)
+list(APPEND FFMPEG_AVDEVICE_INPUT_DEVICES)
+list(APPEND FFMPEG_AVDEVICE_OUTPUT_DEVICES)
+list(APPEND FFMPEG_AVDEVICE_COMPONENTS ffmpeg.avdevice.core.objects)
 
-foreach(AVDEVICE_HEADER ${AVDEVICE_ALL_HEADERS})
-    file(COPY ${AVDEVICE_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/libavdevice)
+
+list(APPEND ffmpeg.avdevice.core.sources
+    alldevices.c
+    avdevice.c
+    utils.c
+    version.c
+)
+
+
+list(APPEND ffmpeg.avdevice.header_names
+    avdevice.h
+    version.h
+    version_major.h
+)
+
+
+set(FFMPEG_AVDEVICE_GENERATED_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
+#set(PREPEND_HACK_DIR "${FFMPEG_AVDEVICE_GENERATED_DIRECTORY}/prepend_hack")
+#file(REMOVE_RECURSE ${PREPEND_HACK_DIR})
+
+
+set(AVDEVICE_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_AVDEVICE_GENERATED_DIRECTORY}/include")
+
+foreach(AVDEVICE_HEADER ${ffmpeg.avdevice.header_names})
+    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVDEVICE_HEADER}\"\n// IWYU pragma: end_exports\n")
+    file(GENERATE OUTPUT "${AVDEVICE_GENERATED_INCLUDE_DIRECTORY}/libavdevice/${AVDEVICE_HEADER}" CONTENT ${HEADER_CONTENT})
 endforeach()
 
-list(APPEND AVDEVICE_SOURCES avdevice.c)
-list(APPEND AVDEVICE_SOURCES version.c)
-list(APPEND AVDEVICE_SOURCES utils.c)
-list(APPEND AVDEVICE_SOURCES alldevices.c)
 
 #generating indev_list.c
-
-#list(APPEND AVDEVICE_REGISTERED_INPUT_DEVICES_IDS device)
-
-set(INPUT_DEVICE_C_FILE_CONTENT)
-string(APPEND INPUT_DEVICE_C_FILE_CONTENT "static const AVInputFormat * const indev_list[] = {\n")
-
-foreach(INPUT_DEVICE_NAME ${AVDEVICE_REGISTERED_INPUT_DEVICES_IDS})
-    string(APPEND INPUT_DEVICE_C_FILE_CONTENT "&${INPUT_DEVICE_NAME},\n")
-endforeach()
-
-string(APPEND INPUT_DEVICE_C_FILE_CONTENT "NULL\n")
-string(APPEND INPUT_DEVICE_C_FILE_CONTENT "}\;")
-
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavdevice/indev_list.c ${INPUT_DEVICE_C_FILE_CONTENT})
+message(WARNING "TODO: generate libavdevice/indev_list.c more properly")
+file(GENERATE OUTPUT "${AVDEVICE_GENERATED_INCLUDE_DIRECTORY}/libavdevice/indev_list.c" CONTENT "static const FFInputFormat * const indev_list[] = {NULL};")
 
 #generating outdev_list.c
+message(WARNING "TODO: generate libavdevice/outdev_list.c more properly")
+file(GENERATE OUTPUT "${AVDEVICE_GENERATED_INCLUDE_DIRECTORY}/libavdevice/outdev_list.c" CONTENT "static const FFOutputFormat * const outdev_list[] = {NULL};")
 
-#list(APPEND AVDEVICE_REGISTERED_OUTPUT_DEVICES_IDS device)
+target_include_directories(ffmpeg.avdevice.headers INTERFACE
+    ${AVDEVICE_GENERATED_INCLUDE_DIRECTORY}
+)
 
-set(OUTPUT_DEVICE_C_FILE_CONTENT)
-string(APPEND OUTPUT_DEVICE_C_FILE_CONTENT "static const AVOutputFormat * const outdev_list[] = {\n")
+target_compile_definitions(ffmpeg.avdevice.config INTERFACE
+)
 
-foreach(OUTPUT_DEVICE_NAME ${AVDEVICE_REGISTERED_OUTPUT_DEVICES_IDS})
-    string(APPEND OUTPUT_DEVICE_C_FILE_CONTENT "&${OUTPUT_DEVICE_NAME},\n")
+
+target_sources(ffmpeg.avdevice.core.objects PRIVATE ${ffmpeg.avdevice.core.sources})
+
+foreach(FFMPEG_AVDEVICE_COMPONENT ${FFMPEG_AVDEVICE_COMPONENTS})
+    set_property(TARGET ${FFMPEG_AVDEVICE_COMPONENT} PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+    target_link_libraries(${FFMPEG_AVDEVICE_COMPONENT} PRIVATE
+        ffmpeg.avutil.config
+        ffmpeg.avutil.headers
+        ffmpeg.avcodec.config
+        ffmpeg.avcodec.headers
+        ffmpeg.avformat.config
+        ffmpeg.avformat.headers
+        ffmpeg.avdevice.config
+        ffmpeg.avdevice.headers
+    )
 endforeach()
 
-string(APPEND OUTPUT_DEVICE_C_FILE_CONTENT "NULL\n")
-string(APPEND OUTPUT_DEVICE_C_FILE_CONTENT "}\;")
 
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/libavdevice/outdev_list.c ${OUTPUT_DEVICE_C_FILE_CONTENT})
-
-add_library(avdevice OBJECT ${AVDEVICE_SOURCES})
-target_include_directories(avdevice PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/include/)
-
-target_link_libraries(avdevice PRIVATE ffmpeg_config)
-target_link_libraries(avdevice PRIVATE avutil)
-target_link_libraries(avdevice PRIVATE avcodec)
-target_link_libraries(avdevice PRIVATE avformat)
-
-target_include_directories(avdevice PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated/)
-
-add_library(avdevice_static STATIC $<TARGET_OBJECTS:avdevice>)
+set(FFMPEG_AVDEVICE_COMPONENTS ${FFMPEG_AVDEVICE_COMPONENTS} PARENT_SCOPE)
