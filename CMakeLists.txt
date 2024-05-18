@@ -88,6 +88,14 @@ if(WIN32)
     set(FFMPEG_HAVE_UNISTD_H 0)
 endif()
 
+
+find_library(FFMPEG_LIB_MATH m)
+set(FFMPEG_LIB_MATH_FOUND FALSE)
+if(NOT ${FFMPEG_LIB_MATH} STREQUAL "LIB_MATH-NOTFOUND")
+    set(FFMPEG_LIB_MATH_FOUND TRUE)
+endif()
+
+
 target_compile_definitions(ffmpeg.global_config INTERFACE HAVE_DOS_PATHS=${FFMPEG_HAVE_DOS_PATHS})
 target_compile_definitions(ffmpeg.global_config INTERFACE HAVE_UNISTD_H=${FFMPEG_HAVE_UNISTD_H})
 
@@ -148,10 +156,9 @@ target_link_libraries(ffmpeg.swscale.objects PRIVATE ffmpeg.global_config)
 target_link_libraries(ffmpeg.fftools.ffmpeg.objects PRIVATE ffmpeg.global_config)
 
 
-# AVUTILS
+# AVUTIL
 add_library(ffmpeg.avutil.shared SHARED $<TARGET_OBJECTS:ffmpeg.avutil.objects>)
 add_library(ffmpeg.avutil.static STATIC $<TARGET_OBJECTS:ffmpeg.avutil.objects>)
-
 
 # AVCODEC
 add_library(ffmpeg.avcodec.shared SHARED)
@@ -176,6 +183,14 @@ foreach(AVFORMAT_COMPONENT_TARGET ${FFMPEG_AVFORMAT_COMPONENTS})
     target_sources(ffmpeg.avformat.static PRIVATE $<TARGET_OBJECTS:${AVFORMAT_COMPONENT_TARGET}>)
 endforeach()
 
+# AVFILTER
+add_library(ffmpeg.avfilter.shared SHARED $<TARGET_OBJECTS:ffmpeg.avfilter.objects>)
+target_link_libraries(ffmpeg.avfilter.shared PRIVATE
+    ffmpeg.avutil.shared
+    ffmpeg.swscale.shared
+)
+add_library(ffmpeg.avfilter.static STATIC $<TARGET_OBJECTS:ffmpeg.avfilter.objects>)
+
 # AVDEVICE
 add_library(ffmpeg.avdevice.shared SHARED)
 target_link_libraries(ffmpeg.avdevice.shared PRIVATE
@@ -198,16 +213,20 @@ target_link_libraries(ffmpeg.swscale.shared PRIVATE ffmpeg.avutil.shared)
 add_library(ffmpeg.swscale.static STATIC $<TARGET_OBJECTS:ffmpeg.swscale.objects>)
 
 
-# AVFILTER
-add_library(ffmpeg.avfilter.shared SHARED $<TARGET_OBJECTS:ffmpeg.avfilter.objects>)
-target_link_libraries(ffmpeg.avfilter.shared PRIVATE
-    ffmpeg.avutil.shared
-    ffmpeg.swscale.shared
+# STATIC libffmpeg
+add_library(ffmpeg.static STATIC)
+list(APPEND FFMPEG_COMPONENTS
+    ffmpeg.avutil.objects
+    ${FFMPEG_AVCODEC_COMPONENTS}
+    ${FFMPEG_AVFORMAT_COMPONENTS}
+    ffmpeg.avfilter.objects
+    ${FFMPEG_AVDEVICE_COMPONENTS}
+
+    ffmpeg.swscale.objects
 )
-add_library(ffmpeg.avfilter.static STATIC $<TARGET_OBJECTS:ffmpeg.avfilter.objects>)
-
-
-
+foreach(FFMPEG_OBJECT_COMPONENT ${FFMPEG_COMPONENTS})
+    target_sources(ffmpeg.static PRIVATE $<TARGET_OBJECTS:${FFMPEG_OBJECT_COMPONENT}>)
+endforeach()
 
 # FFTOOLS
 target_link_libraries(ffmpeg.fftools.ffmpeg.objects PRIVATE
@@ -235,15 +254,20 @@ target_link_libraries(ffmpeg PRIVATE
 )
 
 
-# Do you have math?
-find_library(LIB_MATH m REQUIRED)
-target_link_libraries(ffmpeg.avutil.shared PRIVATE ${LIB_MATH})
-target_link_libraries(ffmpeg.avcodec.shared PRIVATE ${LIB_MATH})
-target_link_libraries(ffmpeg.avformat.shared PRIVATE ${LIB_MATH})
-target_link_libraries(ffmpeg.avdevice.shared PRIVATE ${LIB_MATH})
-target_link_libraries(ffmpeg.swscale.shared PRIVATE ${LIB_MATH})
-target_link_libraries(ffmpeg.avfilter.shared PRIVATE ${LIB_MATH})
-target_link_libraries(ffmpeg PRIVATE ${LIB_MATH})
+
+if(${FFMPEG_LIB_MATH_FOUND})
+    target_link_libraries(ffmpeg.avutil.shared PRIVATE ${FFMPEG_LIB_MATH})
+    target_link_libraries(ffmpeg.avcodec.shared PRIVATE ${FFMPEG_LIB_MATH})
+    target_link_libraries(ffmpeg.avformat.shared PRIVATE ${FFMPEG_LIB_MATH})
+    target_link_libraries(ffmpeg.avdevice.shared PRIVATE ${FFMPEG_LIB_MATH})
+    target_link_libraries(ffmpeg.swscale.shared PRIVATE ${FFMPEG_LIB_MATH})
+    target_link_libraries(ffmpeg.avfilter.shared PRIVATE ${FFMPEG_LIB_MATH})
+
+    target_link_libraries(ffmpeg PRIVATE ${FFMPEG_LIB_MATH})
+
+    target_link_libraries(ffmpeg.doc.decode_video PRIVATE ${FFMPEG_LIB_MATH})
+endif()
+
 
 
 set(LINKER_USE_NO_UNDEFINED TRUE)
@@ -272,6 +296,9 @@ set(ffmpeg.avformat.static.artefact_name "avformat")
 set(ffmpeg.avdevice.static.artefact_name "avdevice")
 set(ffmpeg.avfilter.static.artefact_name "avfilter")
 set(ffmpeg.swscale.static.artefact_name "swscale")
+set(ffmpeg.static.artefact_name "ffmpeg")
+
+
 set(APPEND_STATIC_TO_ARTEFACT_NAME FALSE)
 if(WIN32)
     set(APPEND_STATIC_TO_ARTEFACT_NAME TRUE)
@@ -283,6 +310,8 @@ if(${APPEND_STATIC_TO_ARTEFACT_NAME})
     set(ffmpeg.avdevice.static.artefact_name "avdevice_static")
     set(ffmpeg.avfilter.static.artefact_name "avfilter_static")
     set(ffmpeg.swscale.static.artefact_name "swscale_static")
+
+    set(ffmpeg.static.artefact_name "ffmpeg_static")
 endif()
 set_property(TARGET ffmpeg.avutil.static PROPERTY OUTPUT_NAME ${ffmpeg.avutil.static.artefact_name})
 set_property(TARGET ffmpeg.avcodec.static PROPERTY OUTPUT_NAME ${ffmpeg.avcodec.static.artefact_name})
@@ -290,6 +319,8 @@ set_property(TARGET ffmpeg.avformat.static PROPERTY OUTPUT_NAME ${ffmpeg.avforma
 set_property(TARGET ffmpeg.avdevice.static PROPERTY OUTPUT_NAME ${ffmpeg.avdevice.static.artefact_name})
 set_property(TARGET ffmpeg.avfilter.static PROPERTY OUTPUT_NAME ${ffmpeg.avfilter.static.artefact_name})
 set_property(TARGET ffmpeg.swscale.static PROPERTY OUTPUT_NAME ${ffmpeg.swscale.static.artefact_name})
+
+set_property(TARGET ffmpeg.static PROPERTY OUTPUT_NAME ${ffmpeg.static.artefact_name})
 
 
 set(FFMPEG_DISABLE_WARNINGS_DEFAULT 1)
@@ -301,17 +332,9 @@ option(FFMPEG_DISABLE_WARNINGS "Disable ffmpeg compilation warnings" ${FFMPEG_DI
 
 
 if(FFMPEG_DISABLE_WARNINGS)
-    target_compile_options(ffmpeg.avutil.objects PRIVATE "-w")
-    foreach(AVCODEC_COMPONENT_TARGET ${FFMPEG_AVCODEC_COMPONENTS})
-        target_compile_options(${AVCODEC_COMPONENT_TARGET} PRIVATE "-w")
+    foreach(FFMPEG_OBJECT_COMPONENT ${FFMPEG_COMPONENTS})
+        target_compile_options(${FFMPEG_OBJECT_COMPONENT} PRIVATE "-w")
     endforeach()
-    foreach(AVFORMAT_COMPONENT_TARGET ${FFMPEG_AVFORMAT_COMPONENTS})
-        target_compile_options(${AVFORMAT_COMPONENT_TARGET} PRIVATE "-w")
-    endforeach()
-    foreach(AVDEVICE_COMPONENT_TARGET ${FFMPEG_AVDEVICE_COMPONENTS})
-        target_compile_options(${AVDEVICE_COMPONENT_TARGET} PRIVATE "-w")
-    endforeach()
-    target_compile_options(ffmpeg.avfilter.objects PRIVATE "-w")
-    target_compile_options(ffmpeg.swscale.objects PRIVATE "-w")
+
     target_compile_options(ffmpeg.fftools.ffmpeg.objects PRIVATE "-w")
 endif()
