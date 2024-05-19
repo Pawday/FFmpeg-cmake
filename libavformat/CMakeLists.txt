@@ -152,6 +152,7 @@ include(img2_format.cmake)
 
 
 set(FFMPEG_AVFORMAT_GENERATED_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(AVFORMAT_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_AVFORMAT_GENERATED_DIRECTORY}/include")
 set(PREPEND_HACK_DIR "${FFMPEG_AVFORMAT_GENERATED_DIRECTORY}/prepend_hack")
 file(REMOVE_RECURSE ${PREPEND_HACK_DIR})
 
@@ -164,12 +165,10 @@ list(APPEND ffmpeg.avformat.demuxer_list)
 list(APPEND ffmpeg.avformat.protocol_list)
 
 
-set(ffmpeg.avformat.generated_directory "${CMAKE_CURRENT_BINARY_DIR}/generated")
-set(ffmpeg.avformat.generated_include_directory "${ffmpeg.avformat.generated_directory}/include")
 
 foreach(AVFORMAT_HEADER ${ffmpeg.avformat.header_names})
     set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVFORMAT_HEADER}\"\n// IWYU pragma: end_exports\n")
-    file(GENERATE OUTPUT "${ffmpeg.avformat.generated_include_directory}/libavformat/${AVFORMAT_HEADER}" CONTENT ${HEADER_CONTENT})
+    file(GENERATE OUTPUT "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat/${AVFORMAT_HEADER}" CONTENT ${HEADER_CONTENT})
 endforeach()
 
 
@@ -182,7 +181,7 @@ foreach(MUXER_NAME ${ffmpeg.avformat.muxer_list})
 endforeach()
 string(APPEND ffmpeg.avformat.muxer_list_content "NULL\n")
 string(APPEND ffmpeg.avformat.muxer_list_content "}\;\n")
-file(GENERATE OUTPUT "${ffmpeg.avformat.generated_include_directory}/libavformat/muxer_list.c" CONTENT ${ffmpeg.avformat.muxer_list_content})
+file(GENERATE OUTPUT "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat/muxer_list.c" CONTENT ${ffmpeg.avformat.muxer_list_content})
 
 
 #generating demuxer_list.c
@@ -192,7 +191,7 @@ foreach(DEMUXER_NAME ${ffmpeg.avformat.demuxer_list})
 endforeach()
 string(APPEND ffmpeg.avformat.demuxer_list_content "NULL\n")
 string(APPEND ffmpeg.avformat.demuxer_list_content "}\;\n")
-file(GENERATE OUTPUT "${ffmpeg.avformat.generated_include_directory}/libavformat/demuxer_list.c" CONTENT ${ffmpeg.avformat.demuxer_list_content})
+file(GENERATE OUTPUT "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat/demuxer_list.c" CONTENT ${ffmpeg.avformat.demuxer_list_content})
 
 
 #generating protocol_list.c
@@ -202,10 +201,10 @@ foreach(PROTO_NAME ${ffmpeg.avformat.protocol_list})
 endforeach()
 string(APPEND ffmpeg.avformat.protocol_list_content "NULL\n")
 string(APPEND ffmpeg.avformat.protocol_list_content "}\;\n")
-file(GENERATE OUTPUT "${ffmpeg.avformat.generated_include_directory}/libavformat/protocol_list.c" CONTENT ${ffmpeg.avformat.protocol_list_content})
+file(GENERATE OUTPUT "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat/protocol_list.c" CONTENT ${ffmpeg.avformat.protocol_list_content})
 
 target_include_directories(ffmpeg.avformat.headers INTERFACE
-    ${ffmpeg.avformat.generated_include_directory}
+    ${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}
 )
 
 
