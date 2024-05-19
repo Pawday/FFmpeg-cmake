@@ -1,4 +1,6 @@
 add_library(ffmpeg.swscale.config INTERFACE)
+add_library(ffmpeg.swscale.headers INTERFACE)
+add_library(ffmpeg.swscale.objects OBJECT)
 
 
 list(APPEND ffmpeg.swscale.sources
@@ -49,7 +51,6 @@ foreach(SWSCALE_HEADER ${ffmpeg.swscale.header_names})
 endforeach()
 
 
-add_library(ffmpeg.swscale.headers INTERFACE)
 target_include_directories(ffmpeg.swscale.headers INTERFACE
     ${ffmpeg.swscale.gen_inc}
 )
@@ -58,7 +59,7 @@ target_compile_definitions(ffmpeg.swscale.config INTERFACE
     SWS_MAX_FILTER_SIZE=32
 )
 
-add_library(ffmpeg.swscale.objects OBJECT ${ffmpeg.swscale.sources})
+target_sources(ffmpeg.swscale.objects PRIVATE ${ffmpeg.swscale.sources})
 set_property(TARGET ffmpeg.swscale.objects PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 target_link_libraries(ffmpeg.swscale.objects PRIVATE
     ffmpeg.swscale.config
