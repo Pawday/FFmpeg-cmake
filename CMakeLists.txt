@@ -74,7 +74,7 @@ target_compile_definitions(ffmpeg.global_config INTERFACE
     CONFIG_AVDEVICE=1
 
     CONFIG_SWSCALE=1
-    CONFIG_SWRESAMPLE=0
+    CONFIG_SWRESAMPLE=1
     CONFIG_POSTPROC=0
 
     CONFIG_SWSCALE_ALPHA=0
@@ -113,9 +113,12 @@ message(WARNING "TODO: Watch ffmpeg devs fix avcodec <=> avutil cycle in libavut
 target_link_libraries(ffmpeg.avutil.objects PRIVATE ffmpeg.avcodec.headers)
 
 add_subdirectory(libavformat)
-add_subdirectory(libavfilter)
 add_subdirectory(libavdevice)
+
 add_subdirectory(libswscale)
+add_subdirectory(libavfilter)
+
+add_subdirectory(libswresample)
 
 add_subdirectory(fftools)
 
@@ -154,6 +157,7 @@ endforeach()
 target_link_libraries(ffmpeg.avfilter.objects PRIVATE ffmpeg.global_config)
 target_link_libraries(ffmpeg.swscale.objects PRIVATE ffmpeg.global_config)
 target_link_libraries(ffmpeg.fftools.ffmpeg.objects PRIVATE ffmpeg.global_config)
+target_link_libraries(ffmpeg.swresample.objects PRIVATE ffmpeg.global_config)
 
 
 # AVUTIL
@@ -213,6 +217,13 @@ target_link_libraries(ffmpeg.swscale.shared PRIVATE ffmpeg.avutil.shared)
 add_library(ffmpeg.swscale.static STATIC $<TARGET_OBJECTS:ffmpeg.swscale.objects>)
 
 
+
+# SWRESAMPLE
+add_library(ffmpeg.swresample.shared SHARED $<TARGET_OBJECTS:ffmpeg.swresample.objects>)
+target_link_libraries(ffmpeg.swresample.shared PRIVATE ffmpeg.avutil.shared)
+add_library(ffmpeg.swresample.static STATIC $<TARGET_OBJECTS:ffmpeg.swresample.objects>)
+
+
 # STATIC libffmpeg
 add_library(ffmpeg.static STATIC)
 list(APPEND FFMPEG_COMPONENTS
@@ -223,6 +234,7 @@ list(APPEND FFMPEG_COMPONENTS
     ${FFMPEG_AVDEVICE_COMPONENTS}
 
     ffmpeg.swscale.objects
+    ffmpeg.swresample.objects
 )
 foreach(FFMPEG_OBJECT_COMPONENT ${FFMPEG_COMPONENTS})
     target_sources(ffmpeg.static PRIVATE $<TARGET_OBJECTS:${FFMPEG_OBJECT_COMPONENT}>)
@@ -241,6 +253,10 @@ target_link_libraries(ffmpeg.fftools.ffmpeg.objects PRIVATE
     ffmpeg.avdevice.headers
     ffmpeg.avfilter.config
     ffmpeg.avfilter.headers
+    ffmpeg.swscale.config
+    ffmpeg.swscale.headers
+    ffmpeg.swresample.config
+    ffmpeg.swresample.headers
 )
 
 add_executable(ffmpeg $<TARGET_OBJECTS:ffmpeg.fftools.ffmpeg.objects>)
@@ -250,6 +266,7 @@ target_link_libraries(ffmpeg PRIVATE
     ffmpeg.avformat.shared
     ffmpeg.avdevice.shared
     ffmpeg.avfilter.shared
+    ffmpeg.swresample.shared
     ffmpeg.swscale.shared
 )
 
@@ -262,6 +279,7 @@ if(${FFMPEG_LIB_MATH_FOUND})
     target_link_libraries(ffmpeg.avdevice.shared PRIVATE ${FFMPEG_LIB_MATH})
     target_link_libraries(ffmpeg.swscale.shared PRIVATE ${FFMPEG_LIB_MATH})
     target_link_libraries(ffmpeg.avfilter.shared PRIVATE ${FFMPEG_LIB_MATH})
+    target_link_libraries(ffmpeg.swresample.shared PRIVATE ${FFMPEG_LIB_MATH})
 
     target_link_libraries(ffmpeg PRIVATE ${FFMPEG_LIB_MATH})
 
@@ -282,6 +300,7 @@ if(${LINKER_USE_NO_UNDEFINED})
     target_link_options(ffmpeg.avdevice.shared PRIVATE "-Wl,--no-undefined")
     target_link_options(ffmpeg.avfilter.shared PRIVATE "-Wl,--no-undefined")
     target_link_options(ffmpeg.swscale.shared PRIVATE "-Wl,--no-undefined")
+    target_link_options(ffmpeg.swresample.shared PRIVATE "-Wl,--no-undefined")
 endif()
 
 set_property(TARGET ffmpeg.avutil.shared PROPERTY OUTPUT_NAME "avutil")
@@ -290,12 +309,15 @@ set_property(TARGET ffmpeg.avformat.shared PROPERTY OUTPUT_NAME "avformat")
 set_property(TARGET ffmpeg.avdevice.shared PROPERTY OUTPUT_NAME "avdevice")
 set_property(TARGET ffmpeg.avfilter.shared PROPERTY OUTPUT_NAME "avfilter")
 set_property(TARGET ffmpeg.swscale.shared PROPERTY OUTPUT_NAME "swscale")
+set_property(TARGET ffmpeg.swresample.shared PROPERTY OUTPUT_NAME "swresample")
 set(ffmpeg.avutil.static.artefact_name "avutil")
 set(ffmpeg.avcodec.static.artefact_name "avcodec")
 set(ffmpeg.avformat.static.artefact_name "avformat")
 set(ffmpeg.avdevice.static.artefact_name "avdevice")
 set(ffmpeg.avfilter.static.artefact_name "avfilter")
 set(ffmpeg.swscale.static.artefact_name "swscale")
+set(ffmpeg.swresample.static.artefact_name "swresample")
+
 set(ffmpeg.static.artefact_name "ffmpeg")
 
 
@@ -310,6 +332,7 @@ if(${APPEND_STATIC_TO_ARTEFACT_NAME})
     set(ffmpeg.avdevice.static.artefact_name "avdevice_static")
     set(ffmpeg.avfilter.static.artefact_name "avfilter_static")
     set(ffmpeg.swscale.static.artefact_name "swscale_static")
+    set(ffmpeg.swresample.static.artefact_name "swresample_static")
 
     set(ffmpeg.static.artefact_name "ffmpeg_static")
 endif()
@@ -319,6 +342,7 @@ set_property(TARGET ffmpeg.avformat.static PROPERTY OUTPUT_NAME ${ffmpeg.avforma
 set_property(TARGET ffmpeg.avdevice.static PROPERTY OUTPUT_NAME ${ffmpeg.avdevice.static.artefact_name})
 set_property(TARGET ffmpeg.avfilter.static PROPERTY OUTPUT_NAME ${ffmpeg.avfilter.static.artefact_name})
 set_property(TARGET ffmpeg.swscale.static PROPERTY OUTPUT_NAME ${ffmpeg.swscale.static.artefact_name})
+set_property(TARGET ffmpeg.swresample.static PROPERTY OUTPUT_NAME ${ffmpeg.swresample.static.artefact_name})
 
 set_property(TARGET ffmpeg.static PROPERTY OUTPUT_NAME ${ffmpeg.static.artefact_name})
 
