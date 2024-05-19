@@ -1,4 +1,6 @@
 add_library(ffmpeg.avfilter.config INTERFACE)
+add_library(ffmpeg.avfilter.headers INTERFACE)
+add_library(ffmpeg.avfilter.objects OBJECT)
 
 list(APPEND ffmpeg.avfilter.filter_list)
 
@@ -56,13 +58,12 @@ string(APPEND ffmpeg.avfilter.filter_list_content "}\;\n")
 file(GENERATE OUTPUT "${AVFILTER_GENERATED_INCLUDE_DIRECTORY}/libavfilter/filter_list.c" CONTENT ${ffmpeg.avfilter.filter_list_content})
 
 
-add_library(ffmpeg.avfilter.headers INTERFACE)
 target_include_directories(ffmpeg.avfilter.headers INTERFACE
     ${AVFILTER_GENERATED_INCLUDE_DIRECTORY}
 )
 
 
-add_library(ffmpeg.avfilter.objects OBJECT ${ffmpeg.avfilter.sources})
+target_sources(ffmpeg.avfilter.objects PRIVATE ${ffmpeg.avfilter.sources})
 set_property(TARGET ffmpeg.avfilter.objects PROPERTY POSITION_INDEPENDENT_CODE TRUE)
 target_link_libraries(ffmpeg.avfilter.objects PRIVATE
     ffmpeg.avfilter.headers
