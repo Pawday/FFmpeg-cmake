@@ -39,6 +39,7 @@ list(APPEND ffmpeg.avcodec.core.sources
 )
 
 set(FFMPEG_AVCODEC_GENERATED_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(AVCODEC_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_AVCODEC_GENERATED_DIRECTORY}/include")
 set(PREPEND_HACK_DIR "${FFMPEG_AVCODEC_GENERATED_DIRECTORY}/prepend_hack")
 file(REMOVE_RECURSE ${PREPEND_HACK_DIR})
 
@@ -56,7 +57,6 @@ include(avcodec_headers.cmake)
 include(h264.cmake)
 include(bmp.cmake)
 
-set(AVCODEC_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_AVCODEC_GENERATED_DIRECTORY}/include")
 
 foreach(AVCODEC_HEADER ${ffmpeg.avcodec.header_names})
     set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVCODEC_HEADER}\"\n// IWYU pragma: end_exports\n")
