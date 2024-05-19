@@ -23,14 +23,15 @@ list(APPEND ffmpeg.avfilter.sources
     graphparser.c
 )
 
-set(ffmpeg.avfilter.generated_directory "${CMAKE_CURRENT_BINARY_DIR}/generated")
-set(ffmpeg.avfilter.generated_include_directory "${ffmpeg.avfilter.generated_directory}/include")
+
+set(FFMPEG_AVFILTER_GENERATED_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(AVFILTER_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_AVFILTER_GENERATED_DIRECTORY}/include")
 
 include(avfilter_headers.cmake)
 
 foreach(AVFILTER_HEADER ${ffmpeg.avfilter.header_names})
     set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVFILTER_HEADER}\"\n// IWYU pragma: end_exports\n")
-    file(GENERATE OUTPUT "${ffmpeg.avfilter.generated_include_directory}/libavfilter/${AVFILTER_HEADER}" CONTENT ${HEADER_CONTENT})
+    file(GENERATE OUTPUT "${AVFILTER_GENERATED_INCLUDE_DIRECTORY}/libavfilter/${AVFILTER_HEADER}" CONTENT ${HEADER_CONTENT})
 endforeach()
 
 
@@ -52,12 +53,12 @@ foreach(AVFILTER_NAME ${ffmpeg.avfilter.filter_list})
 endforeach()
 string(APPEND ffmpeg.avfilter.filter_list_content "NULL\n")
 string(APPEND ffmpeg.avfilter.filter_list_content "}\;\n")
-file(GENERATE OUTPUT "${ffmpeg.avfilter.generated_include_directory}/libavfilter/filter_list.c" CONTENT ${ffmpeg.avfilter.filter_list_content})
+file(GENERATE OUTPUT "${AVFILTER_GENERATED_INCLUDE_DIRECTORY}/libavfilter/filter_list.c" CONTENT ${ffmpeg.avfilter.filter_list_content})
 
 
 add_library(ffmpeg.avfilter.headers INTERFACE)
 target_include_directories(ffmpeg.avfilter.headers INTERFACE
-    ${ffmpeg.avfilter.generated_include_directory}
+    ${AVFILTER_GENERATED_INCLUDE_DIRECTORY}
 )
 
 
@@ -68,4 +69,6 @@ target_link_libraries(ffmpeg.avfilter.objects PRIVATE
     ffmpeg.avfilter.config
     ffmpeg.avutil.config
     ffmpeg.avutil.headers
+    ffmpeg.swscale.config
+    ffmpeg.swscale.headers
 )
