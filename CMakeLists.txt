@@ -75,7 +75,7 @@ target_compile_definitions(ffmpeg.global_config INTERFACE
 
     CONFIG_SWSCALE=1
     CONFIG_SWRESAMPLE=1
-    CONFIG_POSTPROC=0
+    CONFIG_POSTPROC=1
 
     CONFIG_SWSCALE_ALPHA=0
 )
@@ -119,6 +119,7 @@ add_subdirectory(libswscale)
 add_subdirectory(libavfilter)
 
 add_subdirectory(libswresample)
+add_subdirectory(libpostproc)
 
 add_subdirectory(fftools)
 
@@ -158,6 +159,7 @@ target_link_libraries(ffmpeg.avfilter.objects PRIVATE ffmpeg.global_config)
 target_link_libraries(ffmpeg.swscale.objects PRIVATE ffmpeg.global_config)
 target_link_libraries(ffmpeg.fftools.ffmpeg.objects PRIVATE ffmpeg.global_config)
 target_link_libraries(ffmpeg.swresample.objects PRIVATE ffmpeg.global_config)
+target_link_libraries(ffmpeg.postproc.objects PRIVATE ffmpeg.global_config)
 
 
 # AVUTIL
@@ -224,6 +226,12 @@ target_link_libraries(ffmpeg.swresample.shared PRIVATE ffmpeg.avutil.shared)
 add_library(ffmpeg.swresample.static STATIC $<TARGET_OBJECTS:ffmpeg.swresample.objects>)
 
 
+# POSTPROC
+add_library(ffmpeg.postproc.shared SHARED $<TARGET_OBJECTS:ffmpeg.postproc.objects>)
+target_link_libraries(ffmpeg.postproc.shared PRIVATE ffmpeg.avutil.shared)
+add_library(ffmpeg.postproc.static STATIC $<TARGET_OBJECTS:ffmpeg.postproc.objects>)
+
+
 # STATIC libffmpeg
 add_library(ffmpeg.static STATIC)
 list(APPEND FFMPEG_COMPONENTS
@@ -235,6 +243,7 @@ list(APPEND FFMPEG_COMPONENTS
 
     ffmpeg.swscale.objects
     ffmpeg.swresample.objects
+    ffmpeg.postproc.objects
 )
 foreach(FFMPEG_OBJECT_COMPONENT ${FFMPEG_COMPONENTS})
     target_sources(ffmpeg.static PRIVATE $<TARGET_OBJECTS:${FFMPEG_OBJECT_COMPONENT}>)
@@ -257,6 +266,8 @@ target_link_libraries(ffmpeg.fftools.ffmpeg.objects PRIVATE
     ffmpeg.swscale.headers
     ffmpeg.swresample.config
     ffmpeg.swresample.headers
+    ffmpeg.postproc.config
+    ffmpeg.postproc.headers
 )
 
 add_executable(ffmpeg $<TARGET_OBJECTS:ffmpeg.fftools.ffmpeg.objects>)
@@ -268,6 +279,7 @@ target_link_libraries(ffmpeg PRIVATE
     ffmpeg.avfilter.shared
     ffmpeg.swresample.shared
     ffmpeg.swscale.shared
+    ffmpeg.postproc.shared
 )
 
 
@@ -280,6 +292,7 @@ if(${FFMPEG_LIB_MATH_FOUND})
     target_link_libraries(ffmpeg.swscale.shared PRIVATE ${FFMPEG_LIB_MATH})
     target_link_libraries(ffmpeg.avfilter.shared PRIVATE ${FFMPEG_LIB_MATH})
     target_link_libraries(ffmpeg.swresample.shared PRIVATE ${FFMPEG_LIB_MATH})
+    target_link_libraries(ffmpeg.postproc.shared PRIVATE ${FFMPEG_LIB_MATH})
 
     target_link_libraries(ffmpeg PRIVATE ${FFMPEG_LIB_MATH})
 
@@ -301,6 +314,7 @@ if(${LINKER_USE_NO_UNDEFINED})
     target_link_options(ffmpeg.avfilter.shared PRIVATE "-Wl,--no-undefined")
     target_link_options(ffmpeg.swscale.shared PRIVATE "-Wl,--no-undefined")
     target_link_options(ffmpeg.swresample.shared PRIVATE "-Wl,--no-undefined")
+    target_link_options(ffmpeg.postproc.shared PRIVATE "-Wl,--no-undefined")
 endif()
 
 set_property(TARGET ffmpeg.avutil.shared PROPERTY OUTPUT_NAME "avutil")
@@ -310,6 +324,7 @@ set_property(TARGET ffmpeg.avdevice.shared PROPERTY OUTPUT_NAME "avdevice")
 set_property(TARGET ffmpeg.avfilter.shared PROPERTY OUTPUT_NAME "avfilter")
 set_property(TARGET ffmpeg.swscale.shared PROPERTY OUTPUT_NAME "swscale")
 set_property(TARGET ffmpeg.swresample.shared PROPERTY OUTPUT_NAME "swresample")
+set_property(TARGET ffmpeg.postproc.shared PROPERTY OUTPUT_NAME "postproc")
 set(ffmpeg.avutil.static.artefact_name "avutil")
 set(ffmpeg.avcodec.static.artefact_name "avcodec")
 set(ffmpeg.avformat.static.artefact_name "avformat")
@@ -317,6 +332,7 @@ set(ffmpeg.avdevice.static.artefact_name "avdevice")
 set(ffmpeg.avfilter.static.artefact_name "avfilter")
 set(ffmpeg.swscale.static.artefact_name "swscale")
 set(ffmpeg.swresample.static.artefact_name "swresample")
+set(ffmpeg.postproc.static.artefact_name "postproc")
 
 set(ffmpeg.static.artefact_name "ffmpeg")
 
@@ -333,6 +349,7 @@ if(${APPEND_STATIC_TO_ARTEFACT_NAME})
     set(ffmpeg.avfilter.static.artefact_name "avfilter_static")
     set(ffmpeg.swscale.static.artefact_name "swscale_static")
     set(ffmpeg.swresample.static.artefact_name "swresample_static")
+    set(ffmpeg.postproc.static.artefact_name "postproc_static")
 
     set(ffmpeg.static.artefact_name "ffmpeg_static")
 endif()
@@ -343,6 +360,7 @@ set_property(TARGET ffmpeg.avdevice.static PROPERTY OUTPUT_NAME ${ffmpeg.avdevic
 set_property(TARGET ffmpeg.avfilter.static PROPERTY OUTPUT_NAME ${ffmpeg.avfilter.static.artefact_name})
 set_property(TARGET ffmpeg.swscale.static PROPERTY OUTPUT_NAME ${ffmpeg.swscale.static.artefact_name})
 set_property(TARGET ffmpeg.swresample.static PROPERTY OUTPUT_NAME ${ffmpeg.swresample.static.artefact_name})
+set_property(TARGET ffmpeg.postproc.static PROPERTY OUTPUT_NAME ${ffmpeg.postproc.static.artefact_name})
 
 set_property(TARGET ffmpeg.static PROPERTY OUTPUT_NAME ${ffmpeg.static.artefact_name})
 
