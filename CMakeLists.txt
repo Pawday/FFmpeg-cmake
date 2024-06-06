@@ -155,7 +155,9 @@ endforeach()
 foreach(AVDEVICE_COMPONENT_TARGET ${FFMPEG_AVDEVICE_COMPONENTS})
     target_link_libraries(${AVDEVICE_COMPONENT_TARGET} PRIVATE ffmpeg.global_config)
 endforeach()
-target_link_libraries(ffmpeg.avfilter.objects PRIVATE ffmpeg.global_config)
+foreach(AVFILTER_COMPONENT_TARGET ${FFMPEG_AVFILTER_COMPONENTS})
+    target_link_libraries(${AVFILTER_COMPONENT_TARGET} PRIVATE ffmpeg.global_config)
+endforeach()
 target_link_libraries(ffmpeg.swscale.objects PRIVATE ffmpeg.global_config)
 target_link_libraries(ffmpeg.fftools.ffmpeg.objects PRIVATE ffmpeg.global_config)
 target_link_libraries(ffmpeg.swresample.objects PRIVATE ffmpeg.global_config)
@@ -190,12 +192,17 @@ foreach(AVFORMAT_COMPONENT_TARGET ${FFMPEG_AVFORMAT_COMPONENTS})
 endforeach()
 
 # AVFILTER
-add_library(ffmpeg.avfilter.shared SHARED $<TARGET_OBJECTS:ffmpeg.avfilter.objects>)
+add_library(ffmpeg.avfilter.shared SHARED)
 target_link_libraries(ffmpeg.avfilter.shared PRIVATE
     ffmpeg.avutil.shared
     ffmpeg.swscale.shared
 )
-add_library(ffmpeg.avfilter.static STATIC $<TARGET_OBJECTS:ffmpeg.avfilter.objects>)
+add_library(ffmpeg.avfilter.static STATIC)
+
+foreach(AVFILTER_COMPONENT_TARGET ${FFMPEG_AVFILTER_COMPONENTS})
+    target_sources(ffmpeg.avfilter.shared PRIVATE $<TARGET_OBJECTS:${AVFILTER_COMPONENT_TARGET}>)
+    target_sources(ffmpeg.avfilter.static PRIVATE $<TARGET_OBJECTS:${AVFILTER_COMPONENT_TARGET}>)
+endforeach()
 
 # AVDEVICE
 add_library(ffmpeg.avdevice.shared SHARED)
@@ -238,7 +245,7 @@ list(APPEND FFMPEG_COMPONENTS
     ffmpeg.avutil.objects
     ${FFMPEG_AVCODEC_COMPONENTS}
     ${FFMPEG_AVFORMAT_COMPONENTS}
-    ffmpeg.avfilter.objects
+    ${FFMPEG_AVFILTER_COMPONENTS}
     ${FFMPEG_AVDEVICE_COMPONENTS}
 
     ffmpeg.swscale.objects

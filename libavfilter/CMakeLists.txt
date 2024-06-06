@@ -1,8 +1,9 @@
 add_library(ffmpeg.avfilter.config INTERFACE)
 add_library(ffmpeg.avfilter.headers INTERFACE)
-add_library(ffmpeg.avfilter.objects OBJECT)
+add_library(ffmpeg.avfilter.core.objects OBJECT)
 
-list(APPEND ffmpeg.avfilter.filter_list)
+list(APPEND FFMPEG_AVFILTER_COMPONENTS ffmpeg.avfilter.core.objects)
+list(APPEND FFMPEG_AVFILTER_FILTERS_LIST)
 
 
 list(APPEND ffmpeg.avfilter.sources
@@ -37,7 +38,7 @@ foreach(AVFILTER_HEADER ${ffmpeg.avfilter.header_names})
 endforeach()
 
 
-list(APPEND ffmpeg.avfilter.filter_list
+list(APPEND FFMPEG_AVFILTER_FILTERS_LIST
     ff_asrc_abuffer #standard audio filter defined in buffersrc.c
     ff_vsrc_buffer #standard video filter defined in buffersrc.c
     ff_asink_abuffer #standard audio filter defined in buffersink.c
@@ -49,13 +50,13 @@ include(vf_null_filter.cmake)
 include(vf_format_filter.cmake)
 include(vf_scale.cmake)
 
-string(APPEND ffmpeg.avfilter.filter_list_content "static const AVFilter * const filter_list[] = {\n")
-foreach(AVFILTER_NAME ${ffmpeg.avfilter.filter_list})
-    string(APPEND ffmpeg.avfilter.filter_list_content "&${AVFILTER_NAME}\,\n")
+string(APPEND FFMPEG_AVFILTER_FILTERS_LIST_CONTENT "static const AVFilter * const filter_list[] = {\n")
+foreach(AVFILTER_NAME ${FFMPEG_AVFILTER_FILTERS_LIST})
+    string(APPEND FFMPEG_AVFILTER_FILTERS_LIST_CONTENT "&${AVFILTER_NAME}\,\n")
 endforeach()
-string(APPEND ffmpeg.avfilter.filter_list_content "NULL\n")
-string(APPEND ffmpeg.avfilter.filter_list_content "}\;\n")
-file(GENERATE OUTPUT "${AVFILTER_GENERATED_INCLUDE_DIRECTORY}/libavfilter/filter_list.c" CONTENT ${ffmpeg.avfilter.filter_list_content})
+string(APPEND FFMPEG_AVFILTER_FILTERS_LIST_CONTENT "NULL\n")
+string(APPEND FFMPEG_AVFILTER_FILTERS_LIST_CONTENT "}\;\n")
+file(GENERATE OUTPUT "${AVFILTER_GENERATED_INCLUDE_DIRECTORY}/libavfilter/filter_list.c" CONTENT ${FFMPEG_AVFILTER_FILTERS_LIST_CONTENT})
 
 
 target_include_directories(ffmpeg.avfilter.headers INTERFACE
@@ -63,13 +64,24 @@ target_include_directories(ffmpeg.avfilter.headers INTERFACE
 )
 
 
-target_sources(ffmpeg.avfilter.objects PRIVATE ${ffmpeg.avfilter.sources})
-set_property(TARGET ffmpeg.avfilter.objects PROPERTY POSITION_INDEPENDENT_CODE TRUE)
-target_link_libraries(ffmpeg.avfilter.objects PRIVATE
-    ffmpeg.avfilter.headers
-    ffmpeg.avfilter.config
-    ffmpeg.avutil.config
-    ffmpeg.avutil.headers
-    ffmpeg.swscale.config
-    ffmpeg.swscale.headers
-)
+target_sources(ffmpeg.avfilter.core.objects PRIVATE ${ffmpeg.avfilter.sources})
+
+
+foreach(FFMPEG_AVFILTER_COMPONENT ${FFMPEG_AVFILTER_COMPONENTS})
+    set_property(TARGET ${FFMPEG_AVFILTER_COMPONENT} PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+    target_link_libraries(${FFMPEG_AVFILTER_COMPONENT} PRIVATE
+        ffmpeg.avfilter.headers
+        ffmpeg.avfilter.config
+        ffmpeg.avutil.config
+        ffmpeg.avutil.headers
+        ffmpeg.swscale.config
+        ffmpeg.swscale.headers
+    )
+endforeach()
+
+set(FFMPEG_AVFILTER_COMPONENTS ${FFMPEG_AVFILTER_COMPONENTS} PARENT_SCOPE)
+
+
+foreach(FFMPEG_AVFILTER_COMPONENT ${FFMPEG_AVFILTER_COMPONENTS})
+    message(STATUS "[avfilter] Built component ${FFMPEG_AVFILTER_COMPONENT}")
+endforeach()
