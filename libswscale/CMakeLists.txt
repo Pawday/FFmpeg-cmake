@@ -45,10 +45,7 @@ list(APPEND ffmpeg.swscale.header_names
 
 set(ffmpeg.swscale.gen_inc "${CMAKE_CURRENT_BINARY_DIR}/generated/include")
 
-foreach(SWSCALE_HEADER ${ffmpeg.swscale.header_names})
-    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${SWSCALE_HEADER}\"\n// IWYU pragma: end_exports\n")
-    file(GENERATE OUTPUT "${ffmpeg.swscale.gen_inc}/libswscale/${SWSCALE_HEADER}" CONTENT ${HEADER_CONTENT})
-endforeach()
+gen_headers(ffmpeg.swscale.header_names CMAKE_CURRENT_SOURCE_DIR "${ffmpeg.swscale.gen_inc}/libswscale")
 
 
 target_include_directories(ffmpeg.swscale.headers INTERFACE

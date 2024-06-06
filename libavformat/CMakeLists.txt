@@ -166,10 +166,7 @@ list(APPEND ffmpeg.avformat.protocol_list)
 
 
 
-foreach(AVFORMAT_HEADER ${ffmpeg.avformat.header_names})
-    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVFORMAT_HEADER}\"\n// IWYU pragma: end_exports\n")
-    file(GENERATE OUTPUT "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat/${AVFORMAT_HEADER}" CONTENT ${HEADER_CONTENT})
-endforeach()
+gen_headers(ffmpeg.avformat.header_names CMAKE_CURRENT_SOURCE_DIR "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat")
 
 
 

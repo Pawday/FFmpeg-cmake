@@ -269,10 +269,7 @@ file(REMOVE_RECURSE ${PREPEND_HACK_DIR})
 gen_prepend_hack(ffmpeg.avutil.sources_prepended PREPEND_HACK_DIR "avutil" ffmpeg.avutil.sources)
 
 
-foreach(AVUTIL_HEADER ${ffmpeg.avutil.header_names})
-    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVUTIL_HEADER}\"\n// IWYU pragma: end_exports\n")
-    file(GENERATE OUTPUT "${ffmpeg.avutil.generated_include_directory}/libavutil/${AVUTIL_HEADER}" CONTENT ${HEADER_CONTENT})
-endforeach()
+gen_headers(ffmpeg.avutil.header_names CMAKE_CURRENT_SOURCE_DIR "${ffmpeg.avutil.generated_include_directory}/libavutil")
 
 set(FFMPEG_AVUTIL_GENERATED_HEADERS
     "avconfig.h"

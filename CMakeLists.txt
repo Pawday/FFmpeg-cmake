@@ -42,6 +42,30 @@ function(gen_prepend_hack SOURCE_PATCH_MAP WORKING_DIR MODULE_NAME OUTPUT_LIST)
 endfunction()
 
 
+function(gen_headers_include_source HEADER_NAMES WORKING_DIR OUTPUT_DIR)
+    set(HEADER_NAMES ${${HEADER_NAMES}})
+    set(WORKING_DIR ${${WORKING_DIR}})
+    foreach(HEADER ${HEADER_NAMES})
+        set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${WORKING_DIR}/${HEADER}\"\n// IWYU pragma: end_exports\n")
+        file(GENERATE OUTPUT "${OUTPUT_DIR}/${HEADER}" CONTENT ${HEADER_CONTENT})
+    endforeach()
+endfunction()
+
+function(gen_headers_symlink HEADER_NAMES WORKING_DIR OUTPUT_DIR)
+    set(HEADER_NAMES ${${HEADER_NAMES}})
+    set(WORKING_DIR ${${WORKING_DIR}})
+    foreach(HEADER ${HEADER_NAMES})
+        set(OUTPUT_FILE "${OUTPUT_DIR}/${HEADER}")
+        cmake_path(REMOVE_FILENAME OUTPUT_FILE OUTPUT_VARIABLE OUTPUT_FILE_DIR)
+        file(MAKE_DIRECTORY ${OUTPUT_FILE_DIR})
+        file(CREATE_LINK "${WORKING_DIR}/${HEADER}" ${OUTPUT_FILE} SYMBOLIC)
+    endforeach()
+endfunction()
+
+function(gen_headers HEADER_NAMES WORKING_DIR OUTPUT_DIR)
+    gen_headers_symlink(${HEADER_NAMES} ${WORKING_DIR} ${OUTPUT_DIR})
+endfunction()
+
 project(FFMPEG VERSION 6.1.1 LANGUAGES C)
 
 string(TIMESTAMP FFMPEG_CONFIG_THIS_YEAR_DEFAULT "%Y")

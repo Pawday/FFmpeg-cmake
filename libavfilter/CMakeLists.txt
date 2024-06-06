@@ -32,11 +32,7 @@ set(AVFILTER_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_AVFILTER_GENERATED_DIRECTORY}
 
 include(avfilter_headers.cmake)
 
-foreach(AVFILTER_HEADER ${ffmpeg.avfilter.header_names})
-    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVFILTER_HEADER}\"\n// IWYU pragma: end_exports\n")
-    file(GENERATE OUTPUT "${AVFILTER_GENERATED_INCLUDE_DIRECTORY}/libavfilter/${AVFILTER_HEADER}" CONTENT ${HEADER_CONTENT})
-endforeach()
-
+gen_headers(ffmpeg.avfilter.header_names CMAKE_CURRENT_SOURCE_DIR "${AVFILTER_GENERATED_INCLUDE_DIRECTORY}/libavfilter")
 
 list(APPEND FFMPEG_AVFILTER_FILTERS_LIST
     ff_asrc_abuffer #standard audio filter defined in buffersrc.c

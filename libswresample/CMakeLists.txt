@@ -25,10 +25,7 @@ list(APPEND ffmpeg.swresample.header_names
 set(FFMPEG_SWRESAMPLE_GENERATED_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(SWRESAMPLE_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_SWRESAMPLE_GENERATED_DIRECTORY}/include")
 
-foreach(SWRESAMPLE_HEADER ${ffmpeg.swresample.header_names})
-    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${SWRESAMPLE_HEADER}\"\n// IWYU pragma: end_exports\n")
-    file(GENERATE OUTPUT "${SWRESAMPLE_GENERATED_INCLUDE_DIRECTORY}/libswresample/${SWRESAMPLE_HEADER}" CONTENT ${HEADER_CONTENT})
-endforeach()
+gen_headers(ffmpeg.swresample.header_names CMAKE_CURRENT_SOURCE_DIR "${SWRESAMPLE_GENERATED_INCLUDE_DIRECTORY}/libswresample")
 
 target_compile_definitions(ffmpeg.swresample.config INTERFACE
 )

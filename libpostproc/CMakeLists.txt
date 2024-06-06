@@ -18,10 +18,7 @@ list(APPEND ffmpeg.postproc.header_names
 set(FFMPEG_POSTPROC_GENERATED_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(POSTPROC_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_POSTPROC_GENERATED_DIRECTORY}/include")
 
-foreach(POSTPROC_HEADER ${ffmpeg.postproc.header_names})
-    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${POSTPROC_HEADER}\"\n// IWYU pragma: end_exports\n")
-    file(GENERATE OUTPUT "${POSTPROC_GENERATED_INCLUDE_DIRECTORY}/libpostproc/${POSTPROC_HEADER}" CONTENT ${HEADER_CONTENT})
-endforeach()
+gen_headers(ffmpeg.postproc.header_names CMAKE_CURRENT_SOURCE_DIR "${POSTPROC_GENERATED_INCLUDE_DIRECTORY}/libpostproc")
 
 target_compile_definitions(ffmpeg.postproc.config INTERFACE
 )

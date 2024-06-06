@@ -58,11 +58,7 @@ include(h264.cmake)
 include(bmp.cmake)
 
 
-foreach(AVCODEC_HEADER ${ffmpeg.avcodec.header_names})
-    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVCODEC_HEADER}\"\n// IWYU pragma: end_exports\n")
-    file(GENERATE OUTPUT "${AVCODEC_GENERATED_INCLUDE_DIRECTORY}/libavcodec/${AVCODEC_HEADER}" CONTENT ${HEADER_CONTENT})
-endforeach()
-
+gen_headers(ffmpeg.avcodec.header_names CMAKE_CURRENT_SOURCE_DIR "${AVCODEC_GENERATED_INCLUDE_DIRECTORY}/libavcodec")
 
 #generating bsf_list.c
 message(WARNING "TODO: generate libavcodec/bsf_list.c more properly")

@@ -30,11 +30,7 @@ set(FFMPEG_AVDEVICE_GENERATED_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
 set(AVDEVICE_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_AVDEVICE_GENERATED_DIRECTORY}/include")
 
-foreach(AVDEVICE_HEADER ${ffmpeg.avdevice.header_names})
-    set(HEADER_CONTENT "// IWYU pragma: begin_exports\n#include \"${CMAKE_CURRENT_SOURCE_DIR}/${AVDEVICE_HEADER}\"\n// IWYU pragma: end_exports\n")
-    file(GENERATE OUTPUT "${AVDEVICE_GENERATED_INCLUDE_DIRECTORY}/libavdevice/${AVDEVICE_HEADER}" CONTENT ${HEADER_CONTENT})
-endforeach()
-
+gen_headers(ffmpeg.avdevice.header_names CMAKE_CURRENT_SOURCE_DIR "${AVDEVICE_GENERATED_INCLUDE_DIRECTORY}/libavdevice")
 
 #generating indev_list.c
 message(WARNING "TODO: generate libavdevice/indev_list.c more properly")
