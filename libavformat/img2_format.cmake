@@ -8,19 +8,19 @@ list(APPEND ffmpeg.avformat.core.sources_prepended
 )
 
 target_compile_definitions(ffmpeg.avformat.config INTERFACE CONFIG_IMAGE2_DEMUXER=1)
-list(APPEND ffmpeg.avformat.muxer_list
+list(APPEND FFMPEG_AVFORMAT_MUXERS
     ff_image2_muxer
     ff_image2pipe_muxer
 )
 
 target_compile_definitions(ffmpeg.avformat.config INTERFACE  CONFIG_IMAGE2_MUXER=1)
-list(APPEND ffmpeg.avformat.demuxer_list
+list(APPEND FFMPEG_AVFORMAT_DEMUXERS
     ff_image2_demuxer
 )
 
 
 target_compile_definitions(ffmpeg.avformat.config INTERFACE CONFIG_IMAGE2PIPE_MUXER=1)
-list(APPEND ffmpeg.avformat.demuxer_list
+list(APPEND FFMPEG_AVFORMAT_DEMUXERS
     ff_image_bmp_pipe_demuxer
     #ff_image_png_pipe_demuxer
 )

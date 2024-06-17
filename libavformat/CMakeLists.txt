@@ -37,7 +37,7 @@ list(APPEND ffmpeg.avformat.core.sources_prepended
 )
 
 
-list(APPEND ffmpeg.avformat.header_names
+list(APPEND FFMPEG_AVFORMAT_HEADERS
     aiff.h
     apetag.h
     argo_asf.h
@@ -160,45 +160,45 @@ file(REMOVE_RECURSE ${PREPEND_HACK_DIR})
 gen_prepend_hack(ffmpeg.avformat.core.sources_prepended PREPEND_HACK_DIR "avformat" ffmpeg.avformat.core.sources)
 
 
-list(APPEND ffmpeg.avformat.muxer_list)
-list(APPEND ffmpeg.avformat.demuxer_list)
-list(APPEND ffmpeg.avformat.protocol_list)
+list(APPEND FFMPEG_AVFORMAT_MUXERS)
+list(APPEND FFMPEG_AVFORMAT_DEMUXERS)
+list(APPEND FFMPEG_AVFORMAT_PROTOCOLS)
 
 
 
-gen_headers(ffmpeg.avformat.header_names CMAKE_CURRENT_SOURCE_DIR "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat")
+gen_headers(FFMPEG_AVFORMAT_HEADERS CMAKE_CURRENT_SOURCE_DIR "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat")
 
 
 
 
 #generating muxer_list.c
-string(APPEND ffmpeg.avformat.muxer_list_content "const FFOutputFormat * const muxer_list[] = {\n")
-foreach(MUXER_NAME ${ffmpeg.avformat.muxer_list})
-    string(APPEND ffmpeg.avformat.muxer_list_content "&${MUXER_NAME}\,\n")
+string(APPEND FFMPEG_AVFORMAT_MUXER_LIST_CONTENT "const FFOutputFormat * const muxer_list[] = {\n")
+foreach(MUXER_NAME ${FFMPEG_AVFORMAT_MUXERS})
+    string(APPEND FFMPEG_AVFORMAT_MUXER_LIST_CONTENT "&${MUXER_NAME}\,\n")
 endforeach()
-string(APPEND ffmpeg.avformat.muxer_list_content "NULL\n")
-string(APPEND ffmpeg.avformat.muxer_list_content "}\;\n")
-file(GENERATE OUTPUT "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat/muxer_list.c" CONTENT ${ffmpeg.avformat.muxer_list_content})
+string(APPEND FFMPEG_AVFORMAT_MUXER_LIST_CONTENT "NULL\n")
+string(APPEND FFMPEG_AVFORMAT_MUXER_LIST_CONTENT "}\;\n")
+file(GENERATE OUTPUT "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat/muxer_list.c" CONTENT ${FFMPEG_AVFORMAT_MUXER_LIST_CONTENT})
 
 
 #generating demuxer_list.c
-string(APPEND ffmpeg.avformat.demuxer_list_content "const FFInputFormat * const demuxer_list[] = {\n")
-foreach(DEMUXER_NAME ${ffmpeg.avformat.demuxer_list})
-    string(APPEND ffmpeg.avformat.demuxer_list_content "&${DEMUXER_NAME}\,\n")
+string(APPEND FFMPEG_AVFORMAT_DEMUXER_LIST_CONTENT "const FFInputFormat * const demuxer_list[] = {\n")
+foreach(DEMUXER_NAME ${FFMPEG_AVFORMAT_DEMUXERS})
+    string(APPEND FFMPEG_AVFORMAT_DEMUXER_LIST_CONTENT "&${DEMUXER_NAME}\,\n")
 endforeach()
-string(APPEND ffmpeg.avformat.demuxer_list_content "NULL\n")
-string(APPEND ffmpeg.avformat.demuxer_list_content "}\;\n")
-file(GENERATE OUTPUT "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat/demuxer_list.c" CONTENT ${ffmpeg.avformat.demuxer_list_content})
+string(APPEND FFMPEG_AVFORMAT_DEMUXER_LIST_CONTENT "NULL\n")
+string(APPEND FFMPEG_AVFORMAT_DEMUXER_LIST_CONTENT "}\;\n")
+file(GENERATE OUTPUT "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat/demuxer_list.c" CONTENT ${FFMPEG_AVFORMAT_DEMUXER_LIST_CONTENT})
 
 
 #generating protocol_list.c
-string(APPEND ffmpeg.avformat.protocol_list_content "const URLProtocol * const url_protocols[] = {\n")
-foreach(PROTO_NAME ${ffmpeg.avformat.protocol_list})
-    string(APPEND ffmpeg.avformat.protocol_list_content "&${PROTO_NAME}\,\n")
+string(APPEND FFMPEG_AVFORMAT_PROTOCOL_LIST_CONTENT "const URLProtocol * const url_protocols[] = {\n")
+foreach(PROTO_NAME ${FFMPEG_AVFORMAT_PROTOCOLS})
+    string(APPEND FFMPEG_AVFORMAT_PROTOCOL_LIST_CONTENT "&${PROTO_NAME}\,\n")
 endforeach()
-string(APPEND ffmpeg.avformat.protocol_list_content "NULL\n")
-string(APPEND ffmpeg.avformat.protocol_list_content "}\;\n")
-file(GENERATE OUTPUT "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat/protocol_list.c" CONTENT ${ffmpeg.avformat.protocol_list_content})
+string(APPEND FFMPEG_AVFORMAT_PROTOCOL_LIST_CONTENT "NULL\n")
+string(APPEND FFMPEG_AVFORMAT_PROTOCOL_LIST_CONTENT "}\;\n")
+file(GENERATE OUTPUT "${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}/libavformat/protocol_list.c" CONTENT ${FFMPEG_AVFORMAT_PROTOCOL_LIST_CONTENT})
 
 target_include_directories(ffmpeg.avformat.headers INTERFACE
     ${AVFORMAT_GENERATED_INCLUDE_DIRECTORY}

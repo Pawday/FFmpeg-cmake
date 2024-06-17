@@ -1,7 +1,7 @@
 list(APPEND ffmpeg.avformat.core.sources file.c)
 
 
-list(APPEND ffmpeg.avformat.protocol_list
+list(APPEND FFMPEG_AVFORMAT_PROTOCOLS
     ff_pipe_protocol
     ff_file_protocol
 )
