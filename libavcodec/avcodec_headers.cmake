@@ -1,4 +1,4 @@
-list(APPEND ffmpeg.avcodec.header_names
+list(APPEND FFMPEG_AVCODEC_HEADERS
     a64colors.h
     a64tables.h
     aac.h

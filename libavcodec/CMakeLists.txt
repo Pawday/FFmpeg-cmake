@@ -58,7 +58,7 @@ include(h264.cmake)
 include(bmp.cmake)
 
 
-gen_headers(ffmpeg.avcodec.header_names CMAKE_CURRENT_SOURCE_DIR "${AVCODEC_GENERATED_INCLUDE_DIRECTORY}/libavcodec")
+gen_headers(FFMPEG_AVCODEC_HEADERS CMAKE_CURRENT_SOURCE_DIR "${AVCODEC_GENERATED_INCLUDE_DIRECTORY}/libavcodec")
 
 #generating bsf_list.c
 message(WARNING "TODO: generate libavcodec/bsf_list.c more properly")
