@@ -2544,6 +2544,11 @@ static void print_pkt_side_data(WriterContext *w,
             const AVStereo3D *stereo = (AVStereo3D *)sd->data;
             print_str("type", av_stereo3d_type_name(stereo->type));
             print_int("inverted", !!(stereo->flags & AV_STEREO3D_FLAG_INVERT));
+            print_str("view", av_stereo3d_view_name(stereo->view));
+            print_str("primary_eye", av_stereo3d_primary_eye_name(stereo->primary_eye));
+            print_int("baseline", stereo->baseline);
+            print_q("horizontal_disparity_adjustment", stereo->horizontal_disparity_adjustment, '/');
+            print_q("horizontal_field_of_view", stereo->horizontal_field_of_view, '/');
         } else if (sd->type == AV_PKT_DATA_SPHERICAL) {
             const AVSphericalMapping *spherical = (AVSphericalMapping *)sd->data;
             print_str("projection", av_spherical_projection_name(spherical->projection));
@@ -3324,8 +3329,8 @@ static int show_stream(WriterContext *w, AVFormatContext *fmt_ctx, int stream_id
         if (sar.num) {
             print_q("sample_aspect_ratio", sar, ':');
             av_reduce(&dar.num, &dar.den,
-                      par->width  * sar.num,
-                      par->height * sar.den,
+                      (int64_t) par->width  * sar.num,
+                      (int64_t) par->height * sar.den,
                       1024*1024);
             print_q("display_aspect_ratio", dar, ':');
         } else {
@@ -3951,7 +3956,7 @@ static int open_input_file(InputFile *ifile, const char *filename,
                 exit(1);
             }
 
-            if ((t = av_dict_get(opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
+            if ((t = av_dict_iterate(opts, NULL))) {
                 av_log(NULL, AV_LOG_ERROR, "Option %s for input stream %d not found\n",
                        t->key, stream->index);
                 return AVERROR_OPTION_NOT_FOUND;

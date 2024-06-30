@@ -193,7 +193,7 @@ typedef struct MOVStreamContext {
     unsigned int sample_size; ///< may contain value calculated from stsd or value from stsz atom
     unsigned int stsz_sample_size; ///< always contains sample size from stsz atom
     unsigned int sample_count;
-    int *sample_sizes;
+    unsigned int *sample_sizes;
     int keyframe_absent;
     unsigned int keyframe_count;
     int *keyframes;
@@ -247,9 +247,11 @@ typedef struct MOVStreamContext {
 
     int32_t *display_matrix;
     AVStereo3D *stereo3d;
+    size_t stereo3d_size;
     AVSphericalMapping *spherical;
     size_t spherical_size;
     AVMasteringDisplayMetadata *mastering;
+    size_t mastering_size;
     AVContentLightMetadata *coll;
     size_t coll_size;
     AVAmbientViewingEnvironment *ambient;

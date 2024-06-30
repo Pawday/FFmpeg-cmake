@@ -2,6 +2,79 @@ The last version increases of all libraries were on 2024-03-07
 
 API changes, most recent first:
 
+2024-06-28 - xxxxxxxxxx - lavu 59.27.100 - stereo3d.h
+  Add AV_STEREO3D_UNSPEC and AV_STEREO3D_VIEW_UNSPEC.
+
+2024-06-25 - xxxxxxxxxx - lavu 59.26.100 - stereo3d.h
+  Add av_stereo3d_alloc_size().
+
+2024-06-19 - xxxxxxxxxx - lavu 59.25.100 - dovi_meta.h
+  Add AVDOVIRpuDataHeader.ext_mapping_idc_0_4 and ext_mapping_idc_5_7.
+
+2024-06-18 - xxxxxxxxxx - lavu 59.24.100 - stereo3d.h
+  Add primary_eye, baseline, horizontal_disparity_adjustment, and
+  horizontal_field_of_view fields to AVStereo3D.
+  Add AVStereo3DPrimaryEye.
+  Add av_stereo3d_view_name.
+  Add av_stereo3d_view_from_name.
+  Add av_stereo3d_primary_eye_name.
+  Add av_stereo3d_primary_eye_from_name.
+
+2024-06-18 - xxxxxxxxxx - lavu 59.23.100 - spherical.h
+  Add AV_SPHERICAL_HALF_EQUIRECTANGULAR, AV_SPHERICAL_RECTILINEAR, and
+  AV_SPHERICAL_FISHEYE values to AVSphericalProjection, and initialize
+  to AV_SPHERICAL_RECTILINEAR on alloc.
+
+2024-06-13 - xxxxxxxxxx - lavu 59.22.100 - common.h
+  Deprecate av_mod_uintp2[_c]() and replace it with av_zero_extend[_c]().
+
+2024-06-08 - xxxxxxxxxx - lavc 61.7.100 - defs.h
+  Add AV_PROFILE_AAC_USAC.
+
+2024-06-02 - xxxxxxxxxx - lavu 59.21.100 - channel_layout.h
+  Add AV_CHAN_SIDE_SURROUND_RIGHT and AV_CH_SIDE_SURROUND_LEFT.
+  Add AV_CHAN_SIDE_SURROUND_RIGHT and AV_CH_SIDE_SURROUND_RIGHT.
+  Add AV_CHAN_TOP_SURROUND_LEFT and AV_CH_TOP_SURROUND_LEFT.
+  Add AV_CHAN_TOP_SURROUND_RIGHT and AV_CH_TOP_SURROUND_RIGHT.
+
+2024-05-23 - xxxxxxxxxx - lavu 59.20.100 - channel_layout.h
+  Add av_channel_layout_ambisonic_order().
+
+2024-05-xx - xxxxxxxxxx - lavu 59.19.100 - hwcontext_qsv.h
+  Add AVQSVFramesContext.info
+
+2024-05-10 - xxxxxxxxx - lavu 59.18.100 - cpu.h
+  Add AV_CPU_FLAG_RV_ZVBB.
+
+2024-05-04 - xxxxxxxxxx - lavu 59.17.100 - opt.h
+  Add AV_OPT_TYPE_UINT and av_opt_eval_uint().
+
+2024-04-24 - 8616cfe0890 - lavu 59.16.100 - opt.h
+  Add AV_OPT_SERIALIZE_SEARCH_CHILDREN.
+
+2024-04-11 - xxxxxxxxxx - lavc 61.5.102 - avcodec.h
+  AVCodecContext.decoded_side_data may now be set by libavcodec after
+  calling avcodec_open2().
+
+2024-04-11 - xxxxxxxxxx - lavu 59.15.100 - frame.h
+  Add av_mastering_display_metadata_alloc_size().
+
+2024-04-11 - xxxxxxxxxx - lavu 59.14.100 - frame.h
+  Add av_frame_side_data_add() and av_frame_side_data_remove().
+  Add AV_FRAME_SIDE_DATA_FLAG_REPLACE.
+
+2024-04-03 - xxxxxxxxxx - lavu 59.13.100 - pixfmt.h
+  Add AVCOL_SPC_IPT_C2, AVCOL_SPC_YCGCO_RE and AVCOL_SPC_YCGCO_RO
+  to map new matrix coefficients defined by H.273 v3.
+
+2024-04-xx - xxxxxxxxxx - lavu 59.12.100 - dovi_meta.h
+  Add AVDOVIMetadata.ext_block_{offset,size}, AVDOVIMetadata.num_ext_blocks,
+  AVDOVIDmData and AVDOVIDmLevel{1..6,8..11,254..255}, av_dovi_get_ext()
+  and av_dovi_find_level().
+
+2024-04-xx - xxxxxxxxxx - lavu 59.11.100 - dovi_meta.h
+  Add AVDOVIDataMapping.nlq_pivots.
+
 2024-03-29 - xxxxxxxxxx - lavf 61.3.100 - avformat.h
   Add AVFormatContext.duration_probesize.
 

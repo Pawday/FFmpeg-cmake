@@ -28,10 +28,10 @@
 #include "cbs_h266.h"
 #include "h264.h"
 #include "h2645_parse.h"
-#include "hevc.h"
 #include "refstruct.h"
 #include "vvc.h"
 
+#include "hevc/hevc.h"
 
 static int cbs_read_ue_golomb(CodedBitstreamContext *ctx, GetBitContext *gbc,
                               const char *name, const int *subscripts,
@@ -709,7 +709,11 @@ static int cbs_h2645_split_fragment(CodedBitstreamContext *ctx,
 
             start = bytestream2_tell(&gbc);
             for(i = 0; i < num_nalus; i++) {
+                if (bytestream2_get_bytes_left(&gbc) < 2)
+                    return AVERROR_INVALIDDATA;
                 size = bytestream2_get_be16(&gbc);
+                if (bytestream2_get_bytes_left(&gbc) < size)
+                    return AVERROR_INVALIDDATA;
                 bytestream2_skip(&gbc, size);
             }
             end = bytestream2_tell(&gbc);
@@ -785,8 +789,27 @@ static int cbs_h26 ## h26n ## _replace_ ## ps_var(CodedBitstreamContext *ctx, \
 }
 
 cbs_h266_replace_ps(6, VPS, vps, vps_video_parameter_set_id)
-cbs_h266_replace_ps(6, SPS, sps, sps_seq_parameter_set_id)
 cbs_h266_replace_ps(6, PPS, pps, pps_pic_parameter_set_id)
+
+static int cbs_h266_replace_sps(CodedBitstreamContext *ctx,
+                                CodedBitstreamUnit *unit)
+{
+    CodedBitstreamH266Context *priv = ctx->priv_data;
+    H266RawSPS *sps = unit->content;
+    unsigned int id = sps->sps_seq_parameter_set_id;
+    int err = ff_cbs_make_unit_refcounted(ctx, unit);
+    if (err < 0)
+        return err;
+    av_assert0(unit->content_ref);
+    if (priv->sps[id] && memcmp(priv->sps[id], unit->content_ref, sizeof(*priv->sps[id]))) {
+        for (unsigned int i = 0; i < VVC_MAX_PPS_COUNT; i++) {
+            if (priv->pps[i] && priv->pps[i]->pps_seq_parameter_set_id == id)
+                ff_refstruct_unref(&priv->pps[i]);
+        }
+    }
+    ff_refstruct_replace(&priv->sps[id], unit->content_ref);
+    return 0;
+}
 
 static int cbs_h266_replace_ph(CodedBitstreamContext *ctx,
                                CodedBitstreamUnit *unit,
@@ -2106,6 +2129,18 @@ static const SEIMessageTypeDescriptor cbs_sei_common_types[] = {
         SEI_MESSAGE_RW(sei, user_data_unregistered),
     },
     {
+        SEI_TYPE_FRAME_PACKING_ARRANGEMENT,
+        1, 0,
+        sizeof(SEIRawFramePackingArrangement),
+        SEI_MESSAGE_RW(sei, frame_packing_arrangement),
+    },
+    {
+        SEI_TYPE_DECODED_PICTURE_HASH,
+        0, 1,
+        sizeof(SEIRawDecodedPictureHash),
+        SEI_MESSAGE_RW(sei, decoded_picture_hash),
+    },
+    {
         SEI_TYPE_MASTERING_DISPLAY_COLOUR_VOLUME,
         1, 0,
         sizeof(SEIRawMasteringDisplayColourVolume),
@@ -2162,6 +2197,12 @@ static const SEIMessageTypeDescriptor cbs_sei_h264_types[] = {
         1, 0,
         sizeof(H264RawFilmGrainCharacteristics),
         SEI_MESSAGE_RW(h264, film_grain_characteristics),
+    },
+    {
+        SEI_TYPE_FRAME_PACKING_ARRANGEMENT,
+        1, 0,
+        sizeof(H264RawSEIFramePackingArrangement),
+        SEI_MESSAGE_RW(h264, sei_frame_packing_arrangement),
     },
     {
         SEI_TYPE_DISPLAY_ORIENTATION,
@@ -2237,12 +2278,6 @@ static const SEIMessageTypeDescriptor cbs_sei_h265_types[] = {
 };
 
 static const SEIMessageTypeDescriptor cbs_sei_h266_types[] = {
-    {
-        SEI_TYPE_DECODED_PICTURE_HASH,
-        0, 1,
-        sizeof(H266RawSEIDecodedPictureHash),
-        SEI_MESSAGE_RW(h266, sei_decoded_picture_hash),
-    },
     SEI_MESSAGE_TYPE_END
 };
 
@@ -2251,11 +2286,6 @@ const SEIMessageTypeDescriptor *ff_cbs_sei_find_type(CodedBitstreamContext *ctx,
 {
     const SEIMessageTypeDescriptor *codec_list;
     int i;
-
-    for (i = 0; cbs_sei_common_types[i].type >= 0; i++) {
-        if (cbs_sei_common_types[i].type == payload_type)
-            return &cbs_sei_common_types[i];
-    }
 
     switch (ctx->codec->codec_id) {
     case AV_CODEC_ID_H264:
@@ -2274,6 +2304,11 @@ const SEIMessageTypeDescriptor *ff_cbs_sei_find_type(CodedBitstreamContext *ctx,
     for (i = 0; codec_list[i].type >= 0; i++) {
         if (codec_list[i].type == payload_type)
             return &codec_list[i];
+    }
+
+    for (i = 0; cbs_sei_common_types[i].type >= 0; i++) {
+        if (cbs_sei_common_types[i].type == payload_type)
+            return &cbs_sei_common_types[i];
     }
 
     return NULL;

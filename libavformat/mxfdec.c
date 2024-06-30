@@ -227,6 +227,7 @@ typedef struct MXFDescriptor {
     UID color_trc_ul;
     UID color_space_ul;
     AVMasteringDisplayMetadata *mastering;
+    size_t mastering_size;
     AVContentLightMetadata *coll;
     size_t coll_size;
 } MXFDescriptor;
@@ -791,6 +792,9 @@ static int mxf_read_partition_pack(void *arg, AVIOContext *pb, int tag, int size
     partition->index_sid = avio_rb32(pb);
     partition->body_offset = avio_rb64(pb);
     partition->body_sid = avio_rb32(pb);
+    if (partition->body_offset < 0)
+        return AVERROR_INVALIDDATA;
+
     if (avio_read(pb, op, sizeof(UID)) != sizeof(UID)) {
         av_log(mxf->fc, AV_LOG_ERROR, "Failed reading UID\n");
         return AVERROR_INVALIDDATA;
@@ -1264,6 +1268,9 @@ static int mxf_read_index_table_segment(void *arg, AVIOContext *pb, int tag, int
     case 0x3F0B:
         segment->index_edit_rate.num = avio_rb32(pb);
         segment->index_edit_rate.den = avio_rb32(pb);
+        if (segment->index_edit_rate.num <= 0 ||
+            segment->index_edit_rate.den <= 0)
+            return AVERROR_INVALIDDATA;
         av_log(NULL, AV_LOG_TRACE, "IndexEditRate %d/%d\n", segment->index_edit_rate.num,
                 segment->index_edit_rate.den);
         break;
@@ -1418,7 +1425,7 @@ static int mxf_read_generic_descriptor(void *arg, AVIOContext *pb, int tag, int 
         }
         if (IS_KLV_KEY(uid, mxf_mastering_display_prefix)) {
             if (!descriptor->mastering) {
-                descriptor->mastering = av_mastering_display_metadata_alloc();
+                descriptor->mastering = av_mastering_display_metadata_alloc_size(&descriptor->mastering_size);
                 if (!descriptor->mastering)
                     return AVERROR(ENOMEM);
             }
@@ -1662,8 +1669,8 @@ static const MXFChannelOrderingUL mxf_channel_ordering[] = {
     { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x04,0x00,0x00,0x00,0x00 }, AV_CHAN_LOW_FREQUENCY,         AV_AUDIO_SERVICE_TYPE_MAIN }, // Low Frequency Effects
     { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x05,0x00,0x00,0x00,0x00 }, AV_CHAN_SIDE_LEFT,             AV_AUDIO_SERVICE_TYPE_MAIN }, // Left Surround
     { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x06,0x00,0x00,0x00,0x00 }, AV_CHAN_SIDE_RIGHT,            AV_AUDIO_SERVICE_TYPE_MAIN }, // Right Surround
-    { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x07,0x00,0x00,0x00,0x00 }, AV_CHAN_SIDE_LEFT,             AV_AUDIO_SERVICE_TYPE_MAIN }, // Left Side Surround
-    { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x08,0x00,0x00,0x00,0x00 }, AV_CHAN_SIDE_RIGHT,            AV_AUDIO_SERVICE_TYPE_MAIN }, // Right Side Surround
+    { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x07,0x00,0x00,0x00,0x00 }, AV_CHAN_SIDE_SURROUND_LEFT,    AV_AUDIO_SERVICE_TYPE_MAIN }, // Left Side Surround
+    { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x08,0x00,0x00,0x00,0x00 }, AV_CHAN_SIDE_SURROUND_RIGHT,   AV_AUDIO_SERVICE_TYPE_MAIN }, // Right Side Surround
     { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x09,0x00,0x00,0x00,0x00 }, AV_CHAN_BACK_LEFT,             AV_AUDIO_SERVICE_TYPE_MAIN }, // Left Rear Surround
     { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x0a,0x00,0x00,0x00,0x00 }, AV_CHAN_BACK_RIGHT,            AV_AUDIO_SERVICE_TYPE_MAIN }, // Right Rear Surround
     { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x0b,0x00,0x00,0x00,0x00 }, AV_CHAN_FRONT_LEFT_OF_CENTER,  AV_AUDIO_SERVICE_TYPE_MAIN }, // Left Center
@@ -1676,8 +1683,8 @@ static const MXFChannelOrderingUL mxf_channel_ordering[] = {
     { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x30,0x01,0x01,0x00,0x00 }, AV_CHAN_TOP_FRONT_LEFT,        AV_AUDIO_SERVICE_TYPE_MAIN }, // Left Height
     { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x30,0x01,0x02,0x00,0x00 }, AV_CHAN_TOP_FRONT_RIGHT,       AV_AUDIO_SERVICE_TYPE_MAIN }, // Right Height
     { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x30,0x01,0x03,0x00,0x00 }, AV_CHAN_TOP_FRONT_CENTER,      AV_AUDIO_SERVICE_TYPE_MAIN }, // Center Height
-    { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x30,0x01,0x04,0x00,0x00 }, AV_CHAN_TOP_SIDE_LEFT,         AV_AUDIO_SERVICE_TYPE_MAIN }, // Left Surround Height
-    { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x30,0x01,0x05,0x00,0x00 }, AV_CHAN_TOP_SIDE_RIGHT,        AV_AUDIO_SERVICE_TYPE_MAIN }, // Right Surround Height
+    { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x30,0x01,0x04,0x00,0x00 }, AV_CHAN_TOP_SURROUND_LEFT,     AV_AUDIO_SERVICE_TYPE_MAIN }, // Left Surround Height
+    { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x30,0x01,0x05,0x00,0x00 }, AV_CHAN_TOP_SURROUND_RIGHT,    AV_AUDIO_SERVICE_TYPE_MAIN }, // Right Surround Height
     { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x30,0x01,0x06,0x00,0x00 }, AV_CHAN_TOP_SIDE_LEFT,         AV_AUDIO_SERVICE_TYPE_MAIN }, // Left Side Surround Height
     { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x30,0x01,0x07,0x00,0x00 }, AV_CHAN_TOP_SIDE_RIGHT,        AV_AUDIO_SERVICE_TYPE_MAIN }, // Right Side Surround Height
     { { 0x06,0x0e,0x2b,0x34,0x04,0x01,0x01,0x0d,0x03,0x02,0x01,0x30,0x01,0x08,0x00,0x00 }, AV_CHAN_TOP_BACK_LEFT,         AV_AUDIO_SERVICE_TYPE_MAIN }, // Left Rear Surround Height
@@ -2949,7 +2956,7 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
             if (descriptor->mastering) {
                 if (!av_packet_side_data_add(&st->codecpar->coded_side_data, &st->codecpar->nb_coded_side_data,
                                              AV_PKT_DATA_MASTERING_DISPLAY_METADATA,
-                                             (uint8_t *)descriptor->mastering, sizeof(*descriptor->mastering), 0)) {
+                                             (uint8_t *)descriptor->mastering, descriptor->mastering_size, 0)) {
                     ret = AVERROR(ENOMEM);
                     goto fail_and_free;
                 }
@@ -3025,6 +3032,7 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
             if (container_ul->desc)
                 av_dict_set(&st->metadata, "data_type", container_ul->desc, 0);
             if (mxf->eia608_extract &&
+                container_ul->desc &&
                 !strcmp(container_ul->desc, "vbi_vanc_smpte_436M")) {
                 st->codecpar->codec_type = AVMEDIA_TYPE_SUBTITLE;
                 st->codecpar->codec_id = AV_CODEC_ID_EIA_608;

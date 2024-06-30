@@ -22,9 +22,9 @@
 #include <string.h>
 
 #include "checkasm.h"
-#include "libavcodec/vvc/vvc_ctu.h"
-#include "libavcodec/vvc/vvc_data.h"
-#include "libavcodec/vvc/vvcdsp.h"
+#include "libavcodec/vvc/ctu.h"
+#include "libavcodec/vvc/data.h"
+#include "libavcodec/vvc/dsp.h"
 
 #include "libavutil/common.h"
 #include "libavutil/intreadwrite.h"
@@ -45,7 +45,7 @@ static const int sizes[] = { 2, 4, 8, 16, 32, 64, 128 };
 #define randomize_buffers(buf0, buf1, size, mask)           \
     do {                                                    \
         int k;                                              \
-        for (k = 0; k < size; k += 4) {                     \
+        for (k = 0; k < size; k += 4 / sizeof(*buf0)) {     \
             uint32_t r = rnd() & mask;                      \
             AV_WN32A(buf0 + k, r);                          \
             AV_WN32A(buf1 + k, r);                          \
@@ -121,7 +121,8 @@ static void check_put_vvc_luma_uni(void)
 
     VVCDSPContext c;
     declare_func(void, uint8_t *dst, ptrdiff_t dststride,
-        uint8_t *src, ptrdiff_t srcstride,  int height, const int8_t *hf, const int8_t *vf, int width);
+        const uint8_t *src, ptrdiff_t srcstride,  int height,
+        const int8_t *hf, const int8_t *vf, int width);
 
     for (int bit_depth = 8; bit_depth <= 12; bit_depth += 2) {
         ff_vvc_dsp_init(&c, bit_depth);
@@ -133,8 +134,8 @@ static void check_put_vvc_luma_uni(void)
                         const int idx       = av_log2(w) - 1;
                         const int mx        = rnd() % VVC_INTER_LUMA_FACTS;
                         const int my        = rnd() % VVC_INTER_LUMA_FACTS;
-                        const int8_t *hf    = ff_vvc_inter_luma_filters[rnd() % VVC_INTER_FILTER_TYPES][mx];
-                        const int8_t *vf    = ff_vvc_inter_luma_filters[rnd() % VVC_INTER_FILTER_TYPES][my];
+                        const int8_t *hf    = ff_vvc_inter_luma_filters[rnd() % VVC_INTER_LUMA_FILTER_TYPES][mx];
+                        const int8_t *vf    = ff_vvc_inter_luma_filters[rnd() % VVC_INTER_LUMA_FILTER_TYPES][my];
                         const char *type;
 
                         switch ((j << 1) | i) {
@@ -183,8 +184,8 @@ static void check_put_vvc_chroma(void)
                         const int idx       = av_log2(w) - 1;
                         const int mx        = rnd() % VVC_INTER_CHROMA_FACTS;
                         const int my        = rnd() % VVC_INTER_CHROMA_FACTS;
-                        const int8_t *hf    = ff_vvc_inter_chroma_filters[rnd() % VVC_INTER_FILTER_TYPES][mx];
-                        const int8_t *vf    = ff_vvc_inter_chroma_filters[rnd() % VVC_INTER_FILTER_TYPES][my];
+                        const int8_t *hf    = ff_vvc_inter_chroma_filters[rnd() % VVC_INTER_CHROMA_FILTER_TYPES][mx];
+                        const int8_t *vf    = ff_vvc_inter_chroma_filters[rnd() % VVC_INTER_CHROMA_FILTER_TYPES][my];
                         const char *type;
                         switch ((j << 1) | i) {
                             case 0: type = "put_chroma_pixels"; break; // 0 0
@@ -219,7 +220,8 @@ static void check_put_vvc_chroma_uni(void)
 
     VVCDSPContext c;
     declare_func(void, uint8_t *dst, ptrdiff_t dststride,
-        uint8_t *src, ptrdiff_t srcstride,  int height, const int8_t *hf, const int8_t *vf, int width);
+        const uint8_t *src, ptrdiff_t srcstride, int height,
+        const int8_t *hf, const int8_t *vf, int width);
 
     for (int bit_depth = 8; bit_depth <= 12; bit_depth += 2) {
         ff_vvc_dsp_init(&c, bit_depth);
@@ -231,8 +233,8 @@ static void check_put_vvc_chroma_uni(void)
                         const int idx       = av_log2(w) - 1;
                         const int mx        = rnd() % VVC_INTER_CHROMA_FACTS;
                         const int my        = rnd() % VVC_INTER_CHROMA_FACTS;
-                        const int8_t *hf    = ff_vvc_inter_chroma_filters[rnd() % VVC_INTER_FILTER_TYPES][mx];
-                        const int8_t *vf    = ff_vvc_inter_chroma_filters[rnd() % VVC_INTER_FILTER_TYPES][my];
+                        const int8_t *hf    = ff_vvc_inter_chroma_filters[rnd() % VVC_INTER_CHROMA_FILTER_TYPES][mx];
+                        const int8_t *vf    = ff_vvc_inter_chroma_filters[rnd() % VVC_INTER_CHROMA_FILTER_TYPES][my];
                         const char *type;
 
                         switch ((j << 1) | i) {
@@ -322,8 +324,46 @@ static void check_avg(void)
     report("avg");
 }
 
+static void check_vvc_sad(void)
+{
+    const int bit_depth = 10;
+    VVCDSPContext c;
+    LOCAL_ALIGNED_32(uint16_t, src0, [MAX_CTU_SIZE * MAX_CTU_SIZE * 4]);
+    LOCAL_ALIGNED_32(uint16_t, src1, [MAX_CTU_SIZE * MAX_CTU_SIZE * 4]);
+    declare_func(int, const int16_t *src0, const int16_t *src1, int dx, int dy, int block_w, int block_h);
+
+    ff_vvc_dsp_init(&c, bit_depth);
+    randomize_pixels(src0, src1, MAX_CTU_SIZE * MAX_CTU_SIZE * 4);
+    for (int h = 8; h <= 16; h *= 2) {
+        for (int w = 8; w <= 16; w *= 2) {
+            for(int offy = 0; offy <= 4; offy++) {
+                for(int offx = 0; offx <= 4; offx++) {
+                    if (w * h < 128)
+                        continue;
+
+                    if (check_func(c.inter.sad, "sad_%dx%d", w, h)) {
+                        int result0;
+                        int result1;
+
+                        result0 =  call_ref(src0 + PIXEL_STRIDE * 2 + 2, src1 + PIXEL_STRIDE * 2 + 2, offx, offy, w, h);
+                        result1 =  call_new(src0 + PIXEL_STRIDE * 2 + 2, src1 + PIXEL_STRIDE * 2 + 2, offx, offy, w, h);
+
+                        if (result1 != result0)
+                            fail();
+                        if(offx == 0 && offy == 0)
+                            bench_new(src0 + PIXEL_STRIDE * 2 + 2, src1 + PIXEL_STRIDE * 2 + 2, offx, offy, w, h);
+                    }
+                }
+            }
+        }
+    }
+
+    report("sad");
+}
+
 void checkasm_check_vvc_mc(void)
 {
+    check_vvc_sad();
     check_put_vvc_luma();
     check_put_vvc_luma_uni();
     check_put_vvc_chroma();

@@ -127,9 +127,10 @@ static int get_jaccarddist(SignatureContext *sc, CoarseSignature *first, CoarseS
 {
     int jaccarddist, i, composdist = 0, cwthcount = 0;
     for (i = 0; i < 5; i++) {
-        if ((jaccarddist = intersection_word(first->data[i], second->data[i])) > 0) {
+        if ((jaccarddist = (1 << 16) * intersection_word(first->data[i], second->data[i])) > 0) {
             jaccarddist /= union_word(first->data[i], second->data[i]);
         }
+        jaccarddist = (1 << 16) - jaccarddist;
         if (jaccarddist >= sc->thworddist) {
             if (++cwthcount > 2) {
                 /* more than half (5/2) of distances are too wide */
@@ -448,14 +449,14 @@ static MatchingInfo evaluate_parameters(AVFilterContext *ctx, SignatureContext *
                 }
 
                 if (tolerancecount > 2) {
-                    a = aprev;
-                    b = bprev;
                     if (dir == DIR_NEXT) {
                         /* turn around */
                         a = infos->first;
                         b = infos->second;
                         dir = DIR_PREV;
                     } else {
+                        a = aprev;
+                        b = bprev;
                         break;
                     }
                 }
@@ -496,10 +497,10 @@ static MatchingInfo evaluate_parameters(AVFilterContext *ctx, SignatureContext *
             continue; /* matching sequence is too short */
         if ((double) goodfcount / (double) fcount < sc->thit)
             continue;
-        if ((double) goodfcount*0.5 < FFMAX(gooda, goodb))
+        if ((double) goodfcount*0.5 <= FFMAX(gooda, goodb))
             continue;
 
-        meandist = (double) goodfcount / (double) distsum;
+        meandist = (double) distsum / (double) goodfcount;
 
         if (meandist < minmeandist ||
                 status == (STATUS_END_REACHED | STATUS_BEGIN_REACHED) ||

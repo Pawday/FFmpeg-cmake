@@ -92,13 +92,16 @@ static int aac_decoder_config(IAMFCodecConfig *codec_config,
     if (left <= 0)
         return AVERROR_INVALIDDATA;
 
-    codec_config->extradata = av_malloc(left);
+    // We pad extradata here because avpriv_mpeg4audio_get_config2() needs it.
+    codec_config->extradata = av_malloc((size_t)left + AV_INPUT_BUFFER_PADDING_SIZE);
     if (!codec_config->extradata)
         return AVERROR(ENOMEM);
 
     codec_config->extradata_size = avio_read(pb, codec_config->extradata, left);
     if (codec_config->extradata_size < left)
         return AVERROR_INVALIDDATA;
+    memset(codec_config->extradata + codec_config->extradata_size, 0,
+           AV_INPUT_BUFFER_PADDING_SIZE);
 
     ret = avpriv_mpeg4audio_get_config2(&cfg, codec_config->extradata,
                                         codec_config->extradata_size, 1, logctx);
@@ -330,7 +333,7 @@ static int scalable_channel_layout_config(void *s, AVIOContext *pb,
     nb_layers = avio_r8(pb) >> 5; // get_bits(&gb, 3);
     // skip_bits(&gb, 5); //reserved
 
-    if (nb_layers > 6)
+    if (nb_layers > 6 || nb_layers == 0)
         return AVERROR_INVALIDDATA;
 
     audio_element->layers = av_calloc(nb_layers, sizeof(*audio_element->layers));
@@ -354,6 +357,9 @@ static int scalable_channel_layout_config(void *s, AVIOContext *pb,
             layer->flags |= AV_IAMF_LAYER_FLAG_RECON_GAIN;
         substream_count = avio_r8(pb);
         coupled_substream_count = avio_r8(pb);
+
+        if (substream_count + k > audio_element->nb_substreams)
+            return AVERROR_INVALIDDATA;
 
         audio_element->layers[i].substream_count         = substream_count;
         audio_element->layers[i].coupled_substream_count = coupled_substream_count;
@@ -934,6 +940,10 @@ static int mix_presentation_obu(void *s, IAMFContext *c, AVIOContext *pb, int le
             if (submix_layout->layout_type == 2) {
                 int sound_system;
                 sound_system = (byte >> 2) & 0xF;
+                if (sound_system >= FF_ARRAY_ELEMS(ff_iamf_sound_system_map)) {
+                    ret = AVERROR_INVALIDDATA;
+                    goto fail;
+                }
                 av_channel_layout_copy(&submix_layout->sound_system, &ff_iamf_sound_system_map[sound_system].layout);
             }
 
@@ -1073,8 +1083,6 @@ int ff_iamfdec_read_descriptors(IAMFContext *c, AVIOContext *pb,
             break;
         case IAMF_OBU_IA_MIX_PRESENTATION:
             ret = mix_presentation_obu(log_ctx, c, pb, obu_size);
-            break;
-        case IAMF_OBU_IA_TEMPORAL_DELIMITER:
             break;
         default: {
             int64_t offset = avio_skip(pb, obu_size);

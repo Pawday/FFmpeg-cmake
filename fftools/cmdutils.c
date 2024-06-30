@@ -311,7 +311,7 @@ static int write_option(void *optctx, const OptionDef *po, const char *opt,
 
         *(int *)dst = num;
     } else if (po->type == OPT_TYPE_INT64) {
-        ret = parse_number(opt, arg, OPT_TYPE_INT64, INT64_MIN, INT64_MAX, &num);
+        ret = parse_number(opt, arg, OPT_TYPE_INT64, INT64_MIN, (double)INT64_MAX, &num);
         if (ret < 0)
             goto finish;
 
@@ -578,7 +578,7 @@ static const AVOption *opt_find(void *obj, const char *name, const char *unit,
     return o;
 }
 
-#define FLAGS (o->type == AV_OPT_TYPE_FLAGS && (arg[0]=='-' || arg[0]=='+')) ? AV_DICT_APPEND : 0
+#define FLAGS ((o->type == AV_OPT_TYPE_FLAGS && (arg[0]=='-' || arg[0]=='+')) ? AV_DICT_APPEND : 0)
 int opt_default(void *optctx, const char *opt, const char *arg)
 {
     const AVOption *o;
@@ -1145,4 +1145,24 @@ char *file_read(const char *filename)
     if (ret < 0)
         return NULL;
     return str;
+}
+
+void remove_avoptions(AVDictionary **a, AVDictionary *b)
+{
+    const AVDictionaryEntry *t = NULL;
+
+    while ((t = av_dict_iterate(b, t))) {
+        av_dict_set(a, t->key, NULL, AV_DICT_MATCH_CASE);
+    }
+}
+
+int check_avoptions(AVDictionary *m)
+{
+    const AVDictionaryEntry *t = av_dict_iterate(m, NULL);
+    if (t) {
+        av_log(NULL, AV_LOG_FATAL, "Option %s not found.\n", t->key);
+        return AVERROR_OPTION_NOT_FOUND;
+    }
+
+    return 0;
 }

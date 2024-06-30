@@ -49,11 +49,27 @@
 #include "hwconfig.h"
 #include "internal.h"
 #include "packet_internal.h"
+#include "progressframe.h"
 #include "refstruct.h"
 #include "thread.h"
+#include "threadprogress.h"
 
 typedef struct DecodeContext {
     AVCodecInternal avci;
+
+    /**
+     * This is set to AV_FRAME_FLAG_KEY for decoders of intra-only formats
+     * (those whose codec descriptor has AV_CODEC_PROP_INTRA_ONLY set)
+     * to set the flag generically.
+     */
+    int intra_only_flag;
+
+    /**
+     * This is set to AV_PICTURE_TYPE_I for intra only video decoders
+     * and to AV_PICTURE_TYPE_NONE for other decoders. It is used to set
+     * the AVFrame's pict_type before the decoder receives it.
+     */
+    enum AVPictureType initial_pict_type;
 
     /* to prevent infinite loop on errors when draining */
     int nb_draining_errors;
@@ -380,6 +396,7 @@ static int discard_samples(AVCodecContext *avctx, AVFrame *frame, int64_t *disca
 static inline int decode_simple_internal(AVCodecContext *avctx, AVFrame *frame, int64_t *discarded_samples)
 {
     AVCodecInternal   *avci = avctx->internal;
+    DecodeContext     *dc = decode_ctx(avci);
     AVPacket     *const pkt = avci->in_pkt;
     const FFCodec *const codec = ffcodec(avctx->codec);
     int got_frame, consumed;
@@ -407,6 +424,8 @@ static inline int decode_simple_internal(AVCodecContext *avctx, AVFrame *frame, 
     if (HAVE_THREADS && avctx->active_thread_type & FF_THREAD_FRAME) {
         consumed = ff_thread_decode_frame(avctx, frame, &got_frame, pkt);
     } else {
+        frame->pict_type = dc->initial_pict_type;
+        frame->flags    |= dc->intra_only_flag;
         consumed = codec->cb.decode(avctx, frame, &got_frame, pkt);
 
         if (!(codec->caps_internal & FF_CODEC_CAP_SETS_PKT_DTS))
@@ -429,7 +448,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
     } else if (avctx->codec->type == AVMEDIA_TYPE_AUDIO) {
         ret =  !got_frame ? AVERROR(EAGAIN)
                           : discard_samples(avctx, frame, discarded_samples);
-    }
+    } else
+        av_assert0(0);
 
     if (ret == AVERROR(EAGAIN))
         av_frame_unref(frame);
@@ -595,6 +615,8 @@ static int decode_receive_frame_internal(AVCodecContext *avctx, AVFrame *frame)
     av_assert0(!frame->buf[0]);
 
     if (codec->cb_type == FF_CODEC_CB_TYPE_RECEIVE_FRAME) {
+        frame->pict_type = dc->initial_pict_type;
+        frame->flags    |= dc->intra_only_flag;
         ret = codec->cb.receive_frame(avctx, frame);
         emms_c();
         if (!ret) {
@@ -624,8 +646,7 @@ static int decode_receive_frame_internal(AVCodecContext *avctx, AVFrame *frame)
                 frame->width = avctx->width;
             if (!frame->height)
                 frame->height = avctx->height;
-        } else
-            frame->flags |= AV_FRAME_FLAG_KEY;
+        }
 
         ret = fill_frame_props(avctx, frame);
         if (ret < 0) {
@@ -1668,11 +1689,135 @@ int ff_reget_buffer(AVCodecContext *avctx, AVFrame *frame, int flags)
     return ret;
 }
 
+typedef struct ProgressInternal {
+    ThreadProgress progress;
+    struct AVFrame *f;
+} ProgressInternal;
+
+static void check_progress_consistency(const ProgressFrame *f)
+{
+    av_assert1(!!f->f == !!f->progress);
+    av_assert1(!f->progress || f->progress->f == f->f);
+}
+
+static int progress_frame_get(AVCodecContext *avctx, ProgressFrame *f)
+{
+    FFRefStructPool *pool = avctx->internal->progress_frame_pool;
+
+    av_assert1(!f->f && !f->progress);
+
+    f->progress = ff_refstruct_pool_get(pool);
+    if (!f->progress)
+        return AVERROR(ENOMEM);
+
+    f->f = f->progress->f;
+    return 0;
+}
+
+int ff_progress_frame_get_buffer(AVCodecContext *avctx, ProgressFrame *f, int flags)
+{
+    int ret;
+
+    ret = progress_frame_get(avctx, f);
+    if (ret < 0)
+        return ret;
+
+    ret = ff_thread_get_buffer(avctx, f->progress->f, flags);
+    if (ret < 0) {
+        f->f = NULL;
+        ff_refstruct_unref(&f->progress);
+        return ret;
+    }
+    return 0;
+}
+
+void ff_progress_frame_ref(ProgressFrame *dst, const ProgressFrame *src)
+{
+    av_assert1(src->progress && src->f && src->f == src->progress->f);
+    av_assert1(!dst->f && !dst->progress);
+    dst->f = src->f;
+    dst->progress = ff_refstruct_ref(src->progress);
+}
+
+void ff_progress_frame_unref(ProgressFrame *f)
+{
+    check_progress_consistency(f);
+    f->f = NULL;
+    ff_refstruct_unref(&f->progress);
+}
+
+void ff_progress_frame_replace(ProgressFrame *dst, const ProgressFrame *src)
+{
+    if (dst == src)
+        return;
+    ff_progress_frame_unref(dst);
+    check_progress_consistency(src);
+    if (src->f)
+        ff_progress_frame_ref(dst, src);
+}
+
+void ff_progress_frame_report(ProgressFrame *f, int n)
+{
+    ff_thread_progress_report(&f->progress->progress, n);
+}
+
+void ff_progress_frame_await(const ProgressFrame *f, int n)
+{
+    ff_thread_progress_await(&f->progress->progress, n);
+}
+
+#if !HAVE_THREADS
+enum ThreadingStatus ff_thread_sync_ref(AVCodecContext *avctx, size_t offset)
+{
+    return FF_THREAD_NO_FRAME_THREADING;
+}
+#endif /* !HAVE_THREADS */
+
+static av_cold int progress_frame_pool_init_cb(FFRefStructOpaque opaque, void *obj)
+{
+    const AVCodecContext *avctx = opaque.nc;
+    ProgressInternal *progress = obj;
+    int ret;
+
+    ret = ff_thread_progress_init(&progress->progress, avctx->active_thread_type & FF_THREAD_FRAME);
+    if (ret < 0)
+        return ret;
+
+    progress->f = av_frame_alloc();
+    if (!progress->f)
+        return AVERROR(ENOMEM);
+
+    return 0;
+}
+
+static void progress_frame_pool_reset_cb(FFRefStructOpaque unused, void *obj)
+{
+    ProgressInternal *progress = obj;
+
+    ff_thread_progress_reset(&progress->progress);
+    av_frame_unref(progress->f);
+}
+
+static av_cold void progress_frame_pool_free_entry_cb(FFRefStructOpaque opaque, void *obj)
+{
+    ProgressInternal *progress = obj;
+
+    ff_thread_progress_destroy(&progress->progress);
+    av_frame_free(&progress->f);
+}
+
 int ff_decode_preinit(AVCodecContext *avctx)
 {
     AVCodecInternal *avci = avctx->internal;
     DecodeContext     *dc = decode_ctx(avci);
     int ret = 0;
+
+    dc->initial_pict_type = AV_PICTURE_TYPE_NONE;
+    if (avctx->codec_descriptor->props & AV_CODEC_PROP_INTRA_ONLY) {
+        dc->intra_only_flag = AV_FRAME_FLAG_KEY;
+        if (avctx->codec_type == AVMEDIA_TYPE_VIDEO)
+            dc->initial_pict_type = AV_PICTURE_TYPE_I;
+    }
 
     /* if the decoder init function was already called previously,
      * free the already allocated subtitle_header before overwriting it */
@@ -1766,6 +1911,16 @@ int ff_decode_preinit(AVCodecContext *avctx)
     if (!avci->in_pkt || !avci->last_pkt_props)
         return AVERROR(ENOMEM);
 
+    if (ffcodec(avctx->codec)->caps_internal & FF_CODEC_CAP_USES_PROGRESSFRAMES) {
+        avci->progress_frame_pool =
+            ff_refstruct_pool_alloc_ext(sizeof(ProgressInternal),
+                                        FF_REFSTRUCT_POOL_FLAG_FREE_ON_INIT_ERROR,
+                                        avctx, progress_frame_pool_init_cb,
+                                        progress_frame_pool_reset_cb,
+                                        progress_frame_pool_free_entry_cb, NULL);
+        if (!avci->progress_frame_pool)
+            return AVERROR(ENOMEM);
+    }
     ret = decode_bsfs_init(avctx);
     if (ret < 0)
         return ret;
@@ -1785,16 +1940,16 @@ int ff_decode_preinit(AVCodecContext *avctx)
  * @retval 0 side data of this type can be added to frame
  * @retval 1 side data of this type should not be added to frame
  */
-static int side_data_pref(const AVCodecContext *avctx, AVFrame *frame,
-                          enum AVFrameSideDataType type)
+static int side_data_pref(const AVCodecContext *avctx, AVFrameSideData ***sd,
+                          int *nb_sd, enum AVFrameSideDataType type)
 {
     DecodeContext *dc = decode_ctx(avctx->internal);
 
     // Note: could be skipped for `type` without corresponding packet sd
-    if (av_frame_get_side_data(frame, type)) {
+    if (av_frame_side_data_get(*sd, *nb_sd, type)) {
         if (dc->side_data_pref_mask & (1ULL << type))
             return 1;
-        av_frame_remove_side_data(frame, type);
+        av_frame_side_data_remove(sd, nb_sd, type);
     }
 
     return 0;
@@ -1807,7 +1962,7 @@ int ff_frame_new_side_data(const AVCodecContext *avctx, AVFrame *frame,
 {
     AVFrameSideData *sd;
 
-    if (side_data_pref(avctx, frame, type)) {
+    if (side_data_pref(avctx, &frame->side_data, &frame->nb_side_data, type)) {
         if (psd)
             *psd = NULL;
         return 0;
@@ -1820,34 +1975,71 @@ int ff_frame_new_side_data(const AVCodecContext *avctx, AVFrame *frame,
     return sd ? 0 : AVERROR(ENOMEM);
 }
 
-int ff_frame_new_side_data_from_buf(const AVCodecContext *avctx,
-                                    AVFrame *frame, enum AVFrameSideDataType type,
-                                    AVBufferRef **buf, AVFrameSideData **psd)
+int ff_frame_new_side_data_from_buf_ext(const AVCodecContext *avctx,
+                                        AVFrameSideData ***sd, int *nb_sd,
+                                        enum AVFrameSideDataType type,
+                                        AVBufferRef **buf)
 {
-    AVFrameSideData *sd = NULL;
     int ret = 0;
 
-    if (side_data_pref(avctx, frame, type))
+    if (side_data_pref(avctx, sd, nb_sd, type))
         goto finish;
 
-    sd = av_frame_new_side_data_from_buf(frame, type, *buf);
-    if (sd)
-        *buf = NULL;
-    else
+    if (!av_frame_side_data_add(sd, nb_sd, type, buf, 0))
         ret = AVERROR(ENOMEM);
 
 finish:
     av_buffer_unref(buf);
-    if (psd)
-        *psd = sd;
 
     return ret;
+}
+
+int ff_frame_new_side_data_from_buf(const AVCodecContext *avctx,
+                                    AVFrame *frame, enum AVFrameSideDataType type,
+                                    AVBufferRef **buf, AVFrameSideData **psd)
+{
+    return ff_frame_new_side_data_from_buf_ext(avctx,
+                                               &frame->side_data, &frame->nb_side_data,
+                                               type, buf);
+}
+
+int ff_decode_mastering_display_new_ext(const AVCodecContext *avctx,
+                                        AVFrameSideData ***sd, int *nb_sd,
+                                        struct AVMasteringDisplayMetadata **mdm)
+{
+    AVBufferRef *buf;
+    size_t size;
+
+    if (side_data_pref(avctx, sd, nb_sd, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA)) {
+        *mdm = NULL;
+        return 0;
+    }
+
+    *mdm = av_mastering_display_metadata_alloc_size(&size);
+    if (!*mdm)
+        return AVERROR(ENOMEM);
+
+    buf = av_buffer_create((uint8_t *)*mdm, size, NULL, NULL, 0);
+    if (!buf) {
+        av_freep(mdm);
+        return AVERROR(ENOMEM);
+    }
+
+    if (!av_frame_side_data_add(sd, nb_sd, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA,
+                                &buf, 0)) {
+        *mdm = NULL;
+        av_buffer_unref(&buf);
+        return AVERROR(ENOMEM);
+    }
+
+    return 0;
 }
 
 int ff_decode_mastering_display_new(const AVCodecContext *avctx, AVFrame *frame,
                                     AVMasteringDisplayMetadata **mdm)
 {
-    if (side_data_pref(avctx, frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA)) {
+    if (side_data_pref(avctx, &frame->side_data, &frame->nb_side_data,
+                       AV_FRAME_DATA_MASTERING_DISPLAY_METADATA)) {
         *mdm = NULL;
         return 0;
     }
@@ -1856,10 +2048,43 @@ int ff_decode_mastering_display_new(const AVCodecContext *avctx, AVFrame *frame,
     return *mdm ? 0 : AVERROR(ENOMEM);
 }
 
+int ff_decode_content_light_new_ext(const AVCodecContext *avctx,
+                                    AVFrameSideData ***sd, int *nb_sd,
+                                    AVContentLightMetadata **clm)
+{
+    AVBufferRef *buf;
+    size_t size;
+
+    if (side_data_pref(avctx, sd, nb_sd, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL)) {
+        *clm = NULL;
+        return 0;
+    }
+
+    *clm = av_content_light_metadata_alloc(&size);
+    if (!*clm)
+        return AVERROR(ENOMEM);
+
+    buf = av_buffer_create((uint8_t *)*clm, size, NULL, NULL, 0);
+    if (!buf) {
+        av_freep(clm);
+        return AVERROR(ENOMEM);
+    }
+
+    if (!av_frame_side_data_add(sd, nb_sd, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL,
+                                &buf, 0)) {
+        *clm = NULL;
+        av_buffer_unref(&buf);
+        return AVERROR(ENOMEM);
+    }
+
+    return 0;
+}
+
 int ff_decode_content_light_new(const AVCodecContext *avctx, AVFrame *frame,
                                 AVContentLightMetadata **clm)
 {
-    if (side_data_pref(avctx, frame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL)) {
+    if (side_data_pref(avctx, &frame->side_data, &frame->nb_side_data,
+                       AV_FRAME_DATA_CONTENT_LIGHT_LEVEL)) {
         *clm = NULL;
         return 0;
     }

@@ -1315,6 +1315,8 @@ static int ebml_parse(MatroskaDemuxContext *matroska,
                     matroska->num_levels--;
                     return LEVEL_ENDED;
                 }
+                // We have not encountered a known element; syntax is a sentinel.
+                av_assert1(syntax->type == EBML_NONE);
             };
         }
 
@@ -2251,8 +2253,9 @@ static int mkv_stereo3d_conv(AVStream *st, MatroskaVideoStereoModeType stereo_mo
         STEREOMODE_STEREO3D_MAPPING(STEREO_MODE_CONV, NOTHING)
     };
     AVStereo3D *stereo;
+    size_t size;
 
-    stereo = av_stereo3d_alloc();
+    stereo = av_stereo3d_alloc_size(&size);
     if (!stereo)
         return AVERROR(ENOMEM);
 
@@ -2260,7 +2263,7 @@ static int mkv_stereo3d_conv(AVStream *st, MatroskaVideoStereoModeType stereo_mo
     stereo->flags = stereo_mode_conv[stereo_mode].flags;
 
     if (!av_packet_side_data_add(&st->codecpar->coded_side_data, &st->codecpar->nb_coded_side_data,
-                                 AV_PKT_DATA_STEREO3D, stereo, sizeof(*stereo), 0)) {
+                                 AV_PKT_DATA_STEREO3D, stereo, size, 0)) {
         av_freep(&stereo);
         return AVERROR(ENOMEM);
     }
@@ -2322,15 +2325,15 @@ static int mkv_parse_video_color(AVStream *st, const MatroskaTrack *track) {
     }
 
     if (has_mastering_primaries || has_mastering_luminance) {
-        AVMasteringDisplayMetadata *metadata;
-        AVPacketSideData *sd = av_packet_side_data_new(&st->codecpar->coded_side_data,
-                                                       &st->codecpar->nb_coded_side_data,
-                                                       AV_PKT_DATA_MASTERING_DISPLAY_METADATA,
-                                                       sizeof(AVMasteringDisplayMetadata), 0);
-        if (!sd)
+        size_t size = 0;
+        AVMasteringDisplayMetadata *metadata = av_mastering_display_metadata_alloc_size(&size);
+        if (!metadata)
             return AVERROR(ENOMEM);
-        metadata = (AVMasteringDisplayMetadata*)sd->data;
-        memset(metadata, 0, sizeof(AVMasteringDisplayMetadata));
+        if (!av_packet_side_data_add(&st->codecpar->coded_side_data, &st->codecpar->nb_coded_side_data,
+                                     AV_PKT_DATA_MASTERING_DISPLAY_METADATA, metadata, size, 0)) {
+            av_freep(&metadata);
+            return AVERROR(ENOMEM);
+        }
         if (has_mastering_primaries) {
             metadata->display_primaries[0][0] = av_d2q(mastering_meta->r_x, INT_MAX);
             metadata->display_primaries[0][1] = av_d2q(mastering_meta->r_y, INT_MAX);
@@ -4208,7 +4211,7 @@ static int matroska_parse_cluster(MatroskaDemuxContext *matroska)
     MatroskaBlock     *block = &cluster->block;
     int res;
 
-    av_assert0(matroska->num_levels <= 2);
+    av_assert0(matroska->num_levels <= 2U);
 
     if (matroska->num_levels == 1) {
         res = ebml_parse(matroska, matroska_segment, NULL);

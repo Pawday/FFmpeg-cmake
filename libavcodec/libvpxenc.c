@@ -49,6 +49,9 @@
 #include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
 
+#define IS_VP9(avctx) (CONFIG_LIBVPX_VP9_ENCODER && avctx->codec_id == AV_CODEC_ID_VP9)
+#define IS_VP8(avctx) (CONFIG_LIBVPX_VP8_ENCODER && avctx->codec_id == AV_CODEC_ID_VP8)
+
 /**
  * Portion of struct vpx_codec_cx_pkt from vpx_encoder.h.
  * One encoded frame returned from the library.
@@ -359,8 +362,7 @@ static int frame_data_submit(AVCodecContext *avctx, AVFifo *fifo,
     FrameData fd = { .pts = frame->pts };
     int ret;
 
-#if CONFIG_LIBVPX_VP9_ENCODER
-    if (avctx->codec_id == AV_CODEC_ID_VP9 &&
+    if (IS_VP9(avctx) &&
         // Keep HDR10+ if it has bit depth higher than 8 and
         // it has PQ trc (SMPTE2084).
         enccfg->g_bit_depth > 8 && avctx->color_trc == AVCOL_TRC_SMPTE2084) {
@@ -372,7 +374,6 @@ static int frame_data_submit(AVCodecContext *avctx, AVFifo *fifo,
                 return AVERROR(ENOMEM);
         }
     }
-#endif
 
     fd.duration     = frame->duration;
     fd.frame_opaque = frame->opaque;
@@ -683,7 +684,7 @@ static int vpx_ts_param_parse(VPxContext *ctx, struct vpx_codec_enc_cfg *enccfg,
         vp8_ts_parse_int_array(enccfg->ts_layer_id, value, value_len, VPX_TS_MAX_PERIODICITY);
     } else if (!strcmp(key, "ts_layering_mode")) {
         /* option for pre-defined temporal structures in function set_temporal_layer_pattern. */
-        ts_layering_mode = strtoul(value, &value, 4);
+        ts_layering_mode = strtoul(value, &value, 10);
     }
 
 #if (VPX_ENCODER_ABI_VERSION >= 12) && CONFIG_LIBVPX_VP9_ENCODER
@@ -2041,6 +2042,7 @@ const FFCodec ff_libvpx_vp8_encoder = {
     FF_CODEC_ENCODE_CB(vpx_encode),
     .close          = vpx_free,
     .caps_internal  = FF_CODEC_CAP_NOT_INIT_THREADSAFE |
+                      FF_CODEC_CAP_INIT_CLEANUP |
                       FF_CODEC_CAP_AUTO_THREADS,
     .p.pix_fmts     = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUVA420P, AV_PIX_FMT_NONE },
     .p.priv_class   = &class_vp8,
@@ -2117,6 +2119,7 @@ FFCodec ff_libvpx_vp9_encoder = {
     FF_CODEC_ENCODE_CB(vpx_encode),
     .close          = vpx_free,
     .caps_internal  = FF_CODEC_CAP_NOT_INIT_THREADSAFE |
+                      FF_CODEC_CAP_INIT_CLEANUP |
                       FF_CODEC_CAP_AUTO_THREADS,
     .defaults       = defaults,
     .init_static_data = vp9_init_static,
