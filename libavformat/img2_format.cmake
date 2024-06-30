@@ -69,7 +69,7 @@ list(APPEND ffmpeg.avformat.imagepipe_demuxers
 list(LENGTH ffmpeg.avformat.imagepipe_demuxers ffmpeg.avformat.imagepipe_demuxers_size)
 math(EXPR SHOULD_BE_ZERO "${ffmpeg.avformat.imagepipe_demuxers_size} % 2")
 if(NOT 0 EQUAL ${SHOULD_BE_ZERO})
-    message(FATAL_ERROR "Broken ffmpeg.avformat.imagepipe_demuxers map")
+    ffmpeg_message(FATAL_ERROR "avformat" "Broken ffmpeg.avformat.imagepipe_demuxers map")
 endif()
 math(EXPR ffmpeg.avformat.imagepipe_demuxers_size "${ffmpeg.avformat.imagepipe_demuxers_size} / 2")
 
@@ -82,7 +82,7 @@ foreach(IMG_DEMUXER_INDEX RANGE 1 ${ffmpeg.avformat.imagepipe_demuxers_size})
     list(GET ffmpeg.avformat.imagepipe_demuxers ${IMG_DEMUXER_VAL_INDEX} DEMUXER_ENABLED)
 
     set(DEMUXER_CONFIG_NAME "CONFIG_IMAGE_${DEMUXER_NAME}_PIPE_DEMUXER")
-    message(STATUS "[avformat] ${DEMUXER_CONFIG_NAME} ${DEMUXER_ENABLED}")
+    ffmpeg_message(STATUS "avformat" "${DEMUXER_CONFIG_NAME} ${DEMUXER_ENABLED}")
 
     target_compile_definitions(ffmpeg.avformat.config INTERFACE ${DEMUXER_CONFIG_NAME}=${DEMUXER_ENABLED})
 endforeach()

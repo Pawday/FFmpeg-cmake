@@ -1,5 +1,45 @@
 cmake_minimum_required(VERSION 3.20)
 
+function(ffmpeg_message MODE MODULE_NAME MESSAGE)
+
+    list(APPEND VALID_MODE_LIST
+        "TRACE"
+        "DEBUG"
+        "VERBOSE"
+        "STATUS"
+        "NOTICE"
+        "DEPRECATION"
+        "AUTHOR_WARNING"
+        "WARNING"
+        "SEND_ERROR"
+        "FATAL_ERROR"
+    )
+
+    list(FIND VALID_MODE_LIST ${MODE} SHOULD_BE_NOT_NEGATIVE_ONE)
+
+    if (-1 EQUAL ${SHOULD_BE_NOT_NEGATIVE_ONE})
+        message(FATAL_ERROR "[ffmpeg] Unknown mode \"${MODE}\" for message \"${MESSAGE}\"")
+    endif()
+
+    if ("FATAL_ERROR" STREQUAL ${MODE})
+        message(FATAL_ERROR "[ffmpeg] [${MODULE_NAME}] ${MESSAGE}")
+        return()
+    endif()
+
+    if ("SEND_ERROR" STREQUAL ${MODE})
+        message(SEND_ERROR "[ffmpeg] [${MODULE_NAME}] ${MESSAGE}")
+        return()
+    endif()
+
+    if ("WARNING" STREQUAL ${MODE})
+        message(WARNING "[ffmpeg] [${MODULE_NAME}] ${MESSAGE}")
+        return()
+    endif()
+
+    message(STATUS "[ffmpeg] [${MODULE_NAME}] (${MODE}) ${MESSAGE}")
+endfunction()
+
+
 function(gen_prepend_hack SOURCE_PATCH_MAP WORKING_DIR MODULE_NAME OUTPUT_LIST)
 
     list(APPEND LOCAL_OUTPUT_LIST ${${OUTPUT_LIST}})
@@ -12,7 +52,7 @@ function(gen_prepend_hack SOURCE_PATCH_MAP WORKING_DIR MODULE_NAME OUTPUT_LIST)
     list(LENGTH SOURCE_PATCH_MAP_VAL SOURCE_PATCH_MAP_SIZE)
     math(EXPR SHOULD_BE_ZERO "${SOURCE_PATCH_MAP_SIZE} % 2")
     if(NOT 0 EQUAL ${SHOULD_BE_ZERO})
-        message(FATAL_ERROR "Broken ${SOURCE_PATCH_MAP_NAME} SOURCE_PATCH_MAP")
+        ffmpeg_message(FATAL_ERROR ${MODULE_NAME} "Broken ${SOURCE_PATCH_MAP_NAME} SOURCE_PATCH_MAP")
     endif()
     math(EXPR SOURCE_PATCH_MAP_SIZE "${SOURCE_PATCH_MAP_SIZE} / 2")
 
@@ -32,7 +72,7 @@ function(gen_prepend_hack SOURCE_PATCH_MAP WORKING_DIR MODULE_NAME OUTPUT_LIST)
         set(GENERATED_SOURCE_LOCATION "${WORKING_DIR_VAL}/${SOURCE}")
         set(GENERATED_SOURCE_CONTENT "${PREPEND_STRING}\n\n#include \"${SOURCE_LOCATION}\"")
 
-        message(STATUS "[${MODULE_NAME}] [Prepend Hack] ${GENERATED_SOURCE_LOCATION}")
+        ffmpeg_message(STATUS ${MODULE_NAME} "[Prepend Hack] ${GENERATED_SOURCE_LOCATION}")
         file(GENERATE OUTPUT ${GENERATED_SOURCE_LOCATION} CONTENT ${GENERATED_SOURCE_CONTENT})
 
         list(APPEND LOCAL_OUTPUT_LIST ${GENERATED_SOURCE_LOCATION})
@@ -97,7 +137,7 @@ set(FFMPEG_LICENSE "GPL" CACHE STRING "FFmpeg LICENSE")
 set_property(CACHE FFMPEG_LICENSE PROPERTY STRINGS ${FFMPEG_LICENSE_VALUES})
 list(FIND FFMPEG_LICENSE_VALUES ${FFMPEG_LICENSE} FFMPEG_LICENSE_INDEX)
 if(-1 EQUAL ${FFMPEG_LICENSE_INDEX})
-    message(FATAL_ERROR "Unknown FFMPEG_LICENSE: ${FFMPEG_LICENSE}")
+    ffmpeg_message(FATAL_ERROR "config" "Unknown FFMPEG_LICENSE: ${FFMPEG_LICENSE}")
 endif()
 
 
@@ -177,7 +217,7 @@ add_subdirectory(compat)
 add_subdirectory(libavutil)
 add_subdirectory(libavcodec)
 
-message(WARNING "TODO: Watch ffmpeg devs fix avcodec <=> avutil cycle in libavutil/hdr_dynamic_metadata.c")
+ffmpeg_message(WARNING "config" "TODO: Watch ffmpeg devs fix avcodec <=> avutil cycle in libavutil/hdr_dynamic_metadata.c")
 target_link_libraries(ffmpeg.avutil.objects PRIVATE ffmpeg.avcodec.headers)
 
 add_subdirectory(libavformat)
@@ -196,19 +236,19 @@ add_subdirectory(doc/examples)
 
 foreach(AVCODEC_COMPONENT_TARGET ${FFMPEG_AVCODEC_COMPONENTS})
     if (NOT TARGET ${AVCODEC_COMPONENT_TARGET})
-        message(FATAL_ERROR "AVCODEC_COMPONENT_TARGET: ${AVCODEC_COMPONENT_TARGET} is not an existing target")
+        ffmpeg_message(FATAL_ERROR "config" "AVCODEC_COMPONENT_TARGET: ${AVCODEC_COMPONENT_TARGET} is not an existing target")
     endif()
 endforeach()
 
 foreach(AVFORMAT_COMPONENT_TARGET ${FFMPEG_AVFORMAT_COMPONENTS})
     if (NOT TARGET ${AVFORMAT_COMPONENT_TARGET})
-        message(FATAL_ERROR "AVFORMAT_COMPONENT_TARGET: ${AVFORMAT_COMPONENT_TARGET} is not an existing target")
+        ffmpeg_message(FATAL_ERROR "config" "AVFORMAT_COMPONENT_TARGET: ${AVFORMAT_COMPONENT_TARGET} is not an existing target")
     endif()
 endforeach()
 
 foreach(AVDEVICE_COMPONENT_TARGET ${FFMPEG_AVDEVICE_COMPONENTS})
     if (NOT TARGET ${AVDEVICE_COMPONENT_TARGET})
-        message(FATAL_ERROR "AVDEVICE_COMPONENT_TARGET: ${AVDEVICE_COMPONENT_TARGET} is not an existing target")
+        ffmpeg_message(FATAL_ERROR "config" "AVDEVICE_COMPONENT_TARGET: ${AVDEVICE_COMPONENT_TARGET} is not an existing target")
     endif()
 endforeach()
 
@@ -441,7 +481,7 @@ set_property(TARGET ffmpeg.static PROPERTY OUTPUT_NAME ${ffmpeg.static.artefact_
 
 
 set(FFMPEG_DISABLE_WARNINGS_DEFAULT 1)
-message(WARNING "TODO: MSVC have option for disabling warnings - use it FFMPEG_DISABLE_WARNINGS")
+ffmpeg_message(WARNING "config" "TODO: MSVC have option for disabling warnings - use it FFMPEG_DISABLE_WARNINGS")
 if(WIN32)
     set(FFMPEG_DISABLE_WARNINGS_DEFAULT 0)
 endif()

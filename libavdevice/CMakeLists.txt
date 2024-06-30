@@ -33,11 +33,11 @@ set(AVDEVICE_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_AVDEVICE_GENERATED_DIRECTORY}
 gen_headers(ffmpeg.avdevice.header_names CMAKE_CURRENT_SOURCE_DIR "${AVDEVICE_GENERATED_INCLUDE_DIRECTORY}/libavdevice")
 
 #generating indev_list.c
-message(WARNING "TODO: generate libavdevice/indev_list.c more properly")
+ffmpeg_message(WARNING "avdevice" "TODO: generate libavdevice/indev_list.c more properly")
 file(GENERATE OUTPUT "${AVDEVICE_GENERATED_INCLUDE_DIRECTORY}/libavdevice/indev_list.c" CONTENT "static const FFInputFormat * const indev_list[] = {NULL};")
 
 #generating outdev_list.c
-message(WARNING "TODO: generate libavdevice/outdev_list.c more properly")
+ffmpeg_message(WARNING "avdevice" "TODO: generate libavdevice/outdev_list.c more properly")
 file(GENERATE OUTPUT "${AVDEVICE_GENERATED_INCLUDE_DIRECTORY}/libavdevice/outdev_list.c" CONTENT "static const FFOutputFormat * const outdev_list[] = {NULL};")
 
 target_include_directories(ffmpeg.avdevice.headers INTERFACE

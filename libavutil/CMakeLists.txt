@@ -321,7 +321,7 @@ list(LENGTH ffmpeg.avutil.math.subst_map ffmpeg.avutil.math.subst_map_size)
 
 math(EXPR ffmpeg.avutil.math.subst_map_size2_remainder "${ffmpeg.avutil.math.subst_map_size} % 2")
 if(NOT 0 EQUAL ${ffmpeg.avutil.math.subst_map_size2_remainder})
-    message(FATAL_ERROR "ffmpeg.avutil.math.subst_map (sym <=> HAVE_<sym>) is broken")
+    ffmpeg_message(FATAL_ERROR "avutil" "ffmpeg.avutil.math.subst_map (sym <=> HAVE_<sym>) is broken")
 endif()
 math(EXPR ffmpeg.avutil.math.subst_map_size "${ffmpeg.avutil.math.subst_map_size} / 2")
 
@@ -336,16 +336,23 @@ foreach(MATH_F_IDX RANGE 1 ${ffmpeg.avutil.math.subst_map_size})
 
     set(CMAKE_REQUIRED_QUIET ON)
     set(CMAKE_REQUIRED_LIBRARIES "m")
-    check_symbol_exists(${KEY} "math.h" FFMPEG_AVUTIL_MATH_${VAL})
+    check_symbol_exists(${KEY} "math.h" FFMPEG_AVUTIL_MATH_${VAL}_DEFAULT)
 
-    if(FFMPEG_AVUTIL_MATH_${VAL})
-        set(FFMPEG_AVUTIL_MATH_${VAL}_CONF 1)
-        message(STATUS "[avutil] ${KEY} <=> ${VAL} ${FFMPEG_AVUTIL_MATH_${VAL}_CONF}")
+
+    if(FFMPEG_AVUTIL_MATH_${VAL}_DEFAULT)
+        set(FFMPEG_AVUTIL_MATH_${VAL} ON CACHE BOOL "Disable builtin replacement for ${KEY} function")
+        ffmpeg_message(STATUS "avutil" "${KEY} <=> ${VAL} ${FFMPEG_AVUTIL_MATH_${VAL}}")
     else()
-        set(FFMPEG_AVUTIL_MATH_${VAL}_CONF 0)
-        message(STATUS "[avutil] ${KEY} [NOT FOUND] <=> ${VAL} ${FFMPEG_AVUTIL_MATH_${VAL}_CONF}")
+        set(FFMPEG_AVUTIL_MATH_${VAL} OFF CACHE BOOL "Disable builtin replacement for ${KEY} function")
+        ffmpeg_message(STATUS "avutil" "${KEY} [NOT FOUND] <=> ${VAL} ${FFMPEG_AVUTIL_MATH_${VAL}}")
     endif()
-    target_compile_definitions(ffmpeg.avutil.config INTERFACE "${VAL}=${FFMPEG_AVUTIL_MATH_${VAL}_CONF}")
+    mark_as_advanced(FFMPEG_AVUTIL_MATH_${VAL})
+
+    if(${FFMPEG_AVUTIL_MATH_${VAL}})
+        target_compile_definitions(ffmpeg.avutil.config INTERFACE "${VAL}=1")
+    else()
+        target_compile_definitions(ffmpeg.avutil.config INTERFACE "${VAL}=0")
+    endif()
 endforeach()
 
 

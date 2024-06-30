@@ -61,7 +61,7 @@ include(bmp.cmake)
 gen_headers(FFMPEG_AVCODEC_HEADERS CMAKE_CURRENT_SOURCE_DIR "${AVCODEC_GENERATED_INCLUDE_DIRECTORY}/libavcodec")
 
 #generating bsf_list.c
-message(WARNING "TODO: generate libavcodec/bsf_list.c more properly")
+ffmpeg_message(WARNING "avcodec" "TODO: generate libavcodec/bsf_list.c more properly")
 file(GENERATE OUTPUT "${AVCODEC_GENERATED_INCLUDE_DIRECTORY}/libavcodec/bsf_list.c" CONTENT "const FFBitStreamFilter *bitstream_filters[] = {NULL};")
 
 
@@ -114,5 +114,5 @@ set(FFMPEG_AVCODEC_COMPONENTS ${FFMPEG_AVCODEC_COMPONENTS} PARENT_SCOPE)
 
 
 foreach(FFMPEG_AVCODEC_COMPONENT ${FFMPEG_AVCODEC_COMPONENTS})
-    message(STATUS "[avcodec] Built component ${FFMPEG_AVCODEC_COMPONENT}")
+    ffmpeg_message(STATUS "avcodec" "Built component ${FFMPEG_AVCODEC_COMPONENT}")
 endforeach()
