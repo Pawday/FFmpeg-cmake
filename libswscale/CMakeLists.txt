@@ -12,7 +12,6 @@ list(APPEND ffmpeg.swscale.sources
     input.c
     #log2_tab.c
     options.c
-    output.c
     rgb2rgb.c
     slice.c
     swscale_unscaled.c
@@ -29,6 +28,7 @@ file(REMOVE_RECURSE ${PREPEND_HACK_DIR})
 list(APPEND ffmpeg.swscale.sources_prepended
     swscale.c "#include \"libavutil/internal.h\""
     utils.c "#include \"libavutil/internal.h\""
+    output.c "#include \"libavutil/internal.h\""
 )
 
 

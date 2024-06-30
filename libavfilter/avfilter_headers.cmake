@@ -1,5 +1,4 @@
 list(APPEND ffmpeg.avfilter.header_names
-    af_afir.h
     af_afirdsp.h
     af_anlmdndsp.h
     af_volume.h

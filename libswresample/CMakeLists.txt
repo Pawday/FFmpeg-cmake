@@ -16,7 +16,10 @@ list(APPEND ffmpeg.swresample.sources
 )
 
 list(APPEND ffmpeg.swresample.header_names
+    audioconvert.h
+    resample.h
     swresample.h
+    swresample_internal.h
     version.h
     version_major.h
 )

@@ -25,6 +25,7 @@ list(APPEND ffmpeg.avcodec.core.sources
     get_buffer.c
     imgconvert.c
     mathtables.c
+    threadprogress.c
     mediacodec.c
     options.c
     packet.c

@@ -12,18 +12,18 @@ list(APPEND ffmpeg.avfilter.sources
 )
 
 list(APPEND ffmpeg.avfilter.sources
+    allfilters.c
+    audio.c
     avfilter.c
-    version.c
     avfilter.c
-    buffersrc.h
-    framequeue.c
-    framepool.c
     avfiltergraph.c
     formats.c
-    audio.c
-    video.c
-    allfilters.c
+    framepool.c
+    framequeue.c
+    framesync.c
     graphparser.c
+    version.c
+    video.c
 )
 
 

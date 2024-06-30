@@ -17,7 +17,21 @@ list(APPEND ffmpeg.avdevice.core.sources
 
 
 list(APPEND ffmpeg.avdevice.header_names
+    alsa.h
     avdevice.h
+    decklink_common.h
+    decklink_common_c.h
+    decklink_dec.h
+    decklink_enc.h
+    dshow_capture.h
+    fbdev_common.h
+    internal.h
+    opengl_enc_shaders.h
+    oss.h
+    pulse_audio_common.h
+    sndio.h
+    timefilter.h
+    v4l2-common.h
     version.h
     version_major.h
 )

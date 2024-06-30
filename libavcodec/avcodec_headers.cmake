@@ -6,8 +6,6 @@ list(APPEND FFMPEG_AVCODEC_HEADERS
     aac_defines.h
     aaccoder_trellis.h
     aaccoder_twoloop.h
-    aacdec.h
-    aacdectab.h
     aacenc.h
     aacenc_is.h
     aacenc_ltp.h
@@ -238,14 +236,6 @@ list(APPEND FFMPEG_AVCODEC_HEADERS
     h274.h
     hap.h
     hca_data.h
-    hevc.h
-    hevc_data.h
-    hevc_parse.h
-    hevc_ps.h
-    hevc_sei.h
-    hevcdec.h
-    hevcdsp.h
-    hevcpred.h
     hpeldsp.h
     hq_hqadata.h
     hq_hqadsp.h
@@ -403,6 +393,7 @@ list(APPEND FFMPEG_AVCODEC_HEADERS
     pngdsp.h
     pnm.h
     profiles.h
+    progressframe.h
     proresdata.h
     proresdec.h
     proresdsp.h
@@ -482,6 +473,7 @@ list(APPEND FFMPEG_AVCODEC_HEADERS
     texturedsp.h
     thread.h
     threadframe.h
+    threadprogress.h
     tiff.h
     tiff_common.h
     tiff_data.h

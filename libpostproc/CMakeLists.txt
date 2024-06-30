@@ -10,6 +10,7 @@ list(APPEND ffmpeg.postproc.sources
 
 list(APPEND ffmpeg.postproc.header_names
     postprocess.h
+    postprocess_internal.h
     version.h
     version_major.h
 )

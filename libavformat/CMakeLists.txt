@@ -92,6 +92,7 @@ list(APPEND FFMPEG_AVFORMAT_HEADERS
     mpegts.h
     mux.h
     mxf.h
+    nal.h
     network.h
     nut.h
     oggdec.h
