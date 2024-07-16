@@ -1,11 +1,11 @@
 add_library(ffmpeg.avformat.config INTERFACE)
 add_library(ffmpeg.avformat.headers INTERFACE)
-add_library(ffmpeg.avformat.core.objects OBJECT)
+ff_create_component(avformat.core OBJECT)
 
 
-list(APPEND FFMPEG_AVFORMAT_COMPONENTS ffmpeg.avformat.core.objects)
+list(APPEND FFMPEG_AVFORMAT_COMPONENTS avformat.core)
 
-list(APPEND ffmpeg.avformat.core.sources
+list(APPEND FFMPEG_AVFORMAT_CORE_SOURCES
     allformats.c
     url.c
     version.c
@@ -30,7 +30,7 @@ list(APPEND ffmpeg.avformat.core.sources
 )
 
 
-list(APPEND ffmpeg.avformat.core.sources_prepended
+list(APPEND FFMPEG_AVFORMAT_CORE_SOURCES_PREPENDED
     avformat.c "#include \"libavutil/internal.h\""
     dump.c "#include \"libavutil/internal.h\""
     id3v2.c "#include \"libavutil/internal.h\""
@@ -158,7 +158,7 @@ set(PREPEND_HACK_DIR "${FFMPEG_AVFORMAT_GENERATED_DIRECTORY}/prepend_hack")
 file(REMOVE_RECURSE ${PREPEND_HACK_DIR})
 
 
-gen_prepend_hack(ffmpeg.avformat.core.sources_prepended PREPEND_HACK_DIR "avformat" ffmpeg.avformat.core.sources)
+gen_prepend_hack(FFMPEG_AVFORMAT_CORE_SOURCES_PREPENDED PREPEND_HACK_DIR "avformat" FFMPEG_AVFORMAT_CORE_SOURCES)
 
 
 list(APPEND FFMPEG_AVFORMAT_MUXERS)
@@ -206,18 +206,15 @@ target_include_directories(ffmpeg.avformat.headers INTERFACE
 )
 
 
-target_sources(ffmpeg.avformat.core.objects PRIVATE ${ffmpeg.avformat.core.sources})
+ff_component_sources(avformat.core FFMPEG_AVFORMAT_CORE_SOURCES)
 
 foreach(FFMPEG_AVFORMAT_COMPONENT ${FFMPEG_AVFORMAT_COMPONENTS})
-    set_property(TARGET ${FFMPEG_AVFORMAT_COMPONENT} PROPERTY POSITION_INDEPENDENT_CODE TRUE)
-    target_link_libraries(${FFMPEG_AVFORMAT_COMPONENT} PRIVATE
-        ffmpeg.avformat.config
-        ffmpeg.avformat.headers
-        ffmpeg.avutil.config
-        ffmpeg.avutil.headers
-        ffmpeg.avcodec.config
-        ffmpeg.avcodec.headers
-    )
+    ff_component_link_library(${FFMPEG_AVFORMAT_COMPONENT} PRIVATE ffmpeg.avformat.config)
+    ff_component_link_library(${FFMPEG_AVFORMAT_COMPONENT} PRIVATE ffmpeg.avformat.headers)
+    ff_component_link_library(${FFMPEG_AVFORMAT_COMPONENT} PRIVATE ffmpeg.avutil.config)
+    ff_component_link_library(${FFMPEG_AVFORMAT_COMPONENT} PRIVATE ffmpeg.avutil.headers)
+    ff_component_link_library(${FFMPEG_AVFORMAT_COMPONENT} PRIVATE ffmpeg.avcodec.config)
+    ff_component_link_library(${FFMPEG_AVFORMAT_COMPONENT} PRIVATE ffmpeg.avcodec.headers)
 endforeach()
 
 set(FFMPEG_AVFORMAT_COMPONENTS ${FFMPEG_AVFORMAT_COMPONENTS} PARENT_SCOPE)

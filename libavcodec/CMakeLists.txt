@@ -1,14 +1,14 @@
 add_library(ffmpeg.avcodec.config INTERFACE)
 add_library(ffmpeg.avcodec.headers INTERFACE)
-add_library(ffmpeg.avcodec.core.objects OBJECT)
+ff_create_component(avcodec.core)
 
 
 list(APPEND FFMPEG_AVCODEC_CODEC_LIST)
 list(APPEND FFMPEG_AVCODEC_PARSER_LIST)
-list(APPEND FFMPEG_AVCODEC_COMPONENTS ffmpeg.avcodec.core.objects)
+list(APPEND FFMPEG_AVCODEC_COMPONENTS avcodec.core)
 
 
-list(APPEND ffmpeg.avcodec.core.sources
+list(APPEND FFMPEG_AVCODEC_CORE_SOURCES
     ac3_parser.c
     adts_parser.c
     allcodecs.c
@@ -44,13 +44,13 @@ set(AVCODEC_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_AVCODEC_GENERATED_DIRECTORY}/i
 set(PREPEND_HACK_DIR "${FFMPEG_AVCODEC_GENERATED_DIRECTORY}/prepend_hack")
 file(REMOVE_RECURSE ${PREPEND_HACK_DIR})
 
-list(APPEND ffmpeg.avcodec.core.sources_prepended
+list(APPEND FFMPEG_AVCODEC_CORE_SOURCES_PREPENDED
     utils.c "#include \"libavutil/internal.h\""
     avcodec.c "#include \"libavutil/internal.h\""
     parser.c "#include \"libavutil/internal.h\""
 )
 
-gen_prepend_hack(ffmpeg.avcodec.core.sources_prepended PREPEND_HACK_DIR "avcodec" ffmpeg.avcodec.core.sources)
+gen_prepend_hack(FFMPEG_AVCODEC_CORE_SOURCES_PREPENDED PREPEND_HACK_DIR "avcodec" FFMPEG_AVCODEC_CORE_SOURCES)
 
 include(avcodec_headers.cmake)
 
@@ -99,16 +99,13 @@ target_include_directories(ffmpeg.avcodec.headers INTERFACE
     ${AVCODEC_GENERATED_INCLUDE_DIRECTORY}
 )
 
-target_sources(ffmpeg.avcodec.core.objects PRIVATE ${ffmpeg.avcodec.core.sources})
+ff_component_sources(avcodec.core FFMPEG_AVCODEC_CORE_SOURCES)
 
 foreach(FFMPEG_AVCODEC_COMPONENT ${FFMPEG_AVCODEC_COMPONENTS})
-    set_property(TARGET ${FFMPEG_AVCODEC_COMPONENT} PROPERTY POSITION_INDEPENDENT_CODE TRUE)
-    target_link_libraries(${FFMPEG_AVCODEC_COMPONENT} PRIVATE
-        ffmpeg.avutil.config
-        ffmpeg.avutil.headers
-        ffmpeg.avcodec.config
-        ffmpeg.avcodec.headers
-    )
+    ff_component_link_library(${FFMPEG_AVCODEC_COMPONENT} PRIVATE ffmpeg.avutil.config)
+    ff_component_link_library(${FFMPEG_AVCODEC_COMPONENT} PRIVATE ffmpeg.avutil.headers)
+    ff_component_link_library(${FFMPEG_AVCODEC_COMPONENT} PRIVATE ffmpeg.avcodec.config)
+    ff_component_link_library(${FFMPEG_AVCODEC_COMPONENT} PRIVATE ffmpeg.avcodec.headers)
 endforeach()
 
 set(FFMPEG_AVCODEC_COMPONENTS ${FFMPEG_AVCODEC_COMPONENTS} PARENT_SCOPE)

@@ -1,8 +1,8 @@
 add_library(ffmpeg.avutil.config INTERFACE)
 add_library(ffmpeg.avutil.headers INTERFACE)
-add_library(ffmpeg.avutil.objects OBJECT)
+ff_create_component(avutil OBJECT)
 
-list(APPEND ffmpeg.avutil.sources
+list(APPEND FFMPEG_AVUTIL_SOURCES
     adler32.c
     aes.c
     aes_ctr.c
@@ -86,7 +86,7 @@ list(APPEND ffmpeg.avutil.sources
     xtea.c
 )
 
-list(APPEND ffmpeg.avutil.sources_prepended
+list(APPEND FFMPEG_AVUTIL_SOURCES_prepended
      tx.c "#include \"libavutil/internal.h\""
      frame.c "#include \"libavutil/internal.h\"\n#include \"libavutil/intmath.h\""
      tx_double.c "#include \"libavutil/internal.h\"\n#include \"libavutil/intmath.h\""
@@ -266,7 +266,7 @@ target_compile_definitions(ffmpeg.avutil.config INTERFACE
 
 set(PREPEND_HACK_DIR "${ffmpeg.avutil.generated_directory}/prepend_hack")
 file(REMOVE_RECURSE ${PREPEND_HACK_DIR})
-gen_prepend_hack(ffmpeg.avutil.sources_prepended PREPEND_HACK_DIR "avutil" ffmpeg.avutil.sources)
+gen_prepend_hack(FFMPEG_AVUTIL_SOURCES_prepended PREPEND_HACK_DIR "avutil" FFMPEG_AVUTIL_SOURCES)
 
 
 gen_headers(ffmpeg.avutil.header_names CMAKE_CURRENT_SOURCE_DIR "${ffmpeg.avutil.generated_include_directory}/libavutil")
@@ -358,13 +358,7 @@ endforeach()
 
 target_include_directories(ffmpeg.avutil.headers INTERFACE ${ffmpeg.avutil.generated_include_directory})
 
-target_sources(ffmpeg.avutil.objects PRIVATE ${ffmpeg.avutil.sources})
-set_property(TARGET ffmpeg.avutil.objects PROPERTY POSITION_INDEPENDENT_CODE TRUE)
-target_link_libraries(ffmpeg.avutil.objects PRIVATE
-    ffmpeg.avutil.config
-    ffmpeg.avutil.headers
-)
-
-target_link_libraries(ffmpeg.avutil.objects PRIVATE
-    ffmpeg.compat.headers
-)
+ff_component_sources(avutil FFMPEG_AVUTIL_SOURCES)
+ff_component_link_library(avutil PRIVATE ffmpeg.avutil.config)
+ff_component_link_library(avutil PRIVATE ffmpeg.avutil.headers)
+ff_component_link_library(avutil PRIVATE ffmpeg.compat.headers)

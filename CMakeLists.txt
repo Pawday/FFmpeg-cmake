@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.23)
+
+option(FFMPEG_DISABLE_CMAKE_WARNINGS "Disable cmake warnings for ffmpeg" ON)
+mark_as_advanced(FFMPEG_DISABLE_CMAKE_WARNINGS)
 
 function(ffmpeg_message MODE MODULE_NAME MESSAGE)
 
@@ -32,12 +35,35 @@ function(ffmpeg_message MODE MODULE_NAME MESSAGE)
     endif()
 
     if ("WARNING" STREQUAL ${MODE})
+        if (FFMPEG_DISABLE_CMAKE_WARNINGS)
+            return()
+        endif()
         message(WARNING "[ffmpeg] [${MODULE_NAME}] ${MESSAGE}")
         return()
     endif()
 
-    message(STATUS "[ffmpeg] [${MODULE_NAME}] (${MODE}) ${MESSAGE}")
+    message(STATUS "[ffmpeg] (${MODE}) [${MODULE_NAME}] ${MESSAGE}")
 endfunction()
+
+macro(ff_create_component COMPONENT_NAME)
+    list(APPEND FFMPEG_COMPONENTS ${COMPONENT_NAME})
+    set(FFMPEG_COMPONENTS ${FFMPEG_COMPONENTS} PARENT_SCOPE)
+    add_library(ffmpeg.${COMPONENT_NAME}.PIC_obj OBJECT)
+    set_property(TARGET ffmpeg.${COMPONENT_NAME}.PIC_obj PROPERTY POSITION_INDEPENDENT_CODE TRUE)
+    add_library(ffmpeg.${COMPONENT_NAME}.obj OBJECT)
+endmacro()
+
+
+macro(ff_component_sources COMPONENT_NAME SOURCES_LIST)
+    target_sources(ffmpeg.${COMPONENT_NAME}.PIC_obj PUBLIC ${${SOURCES_LIST}})
+    target_sources(ffmpeg.${COMPONENT_NAME}.obj PUBLIC ${${SOURCES_LIST}})
+endmacro()
+
+
+macro(ff_component_link_library COMPONENT_NAME MODE LIBRARY_TARGET)
+    target_link_libraries(ffmpeg.${COMPONENT_NAME}.PIC_obj ${MODE} ${LIBRARY_TARGET})
+    target_link_libraries(ffmpeg.${COMPONENT_NAME}.obj ${MODE} ${LIBRARY_TARGET})
+endmacro()
 
 
 function(gen_prepend_hack SOURCE_PATCH_MAP WORKING_DIR MODULE_NAME OUTPUT_LIST)
@@ -107,6 +133,8 @@ function(gen_headers HEADER_NAMES WORKING_DIR OUTPUT_DIR)
 endfunction()
 
 project(FFMPEG VERSION 7.0.0 LANGUAGES C)
+
+set(CMAKE_LINK_LIBRARIES_ONLY_TARGETS ON)
 
 string(TIMESTAMP FFMPEG_CONFIG_THIS_YEAR_DEFAULT "%Y")
 set(FFMPEG_CONFIG_THIS_YEAR ${FFMPEG_CONFIG_THIS_YEAR_DEFAULT} CACHE STRING "FFmpeg CONFIG_THIS_YEAR string define")
@@ -218,7 +246,8 @@ add_subdirectory(libavutil)
 add_subdirectory(libavcodec)
 
 ffmpeg_message(WARNING "config" "TODO: Watch ffmpeg devs fix avcodec <=> avutil cycle in libavutil/hdr_dynamic_metadata.c")
-target_link_libraries(ffmpeg.avutil.objects PRIVATE ffmpeg.avcodec.headers)
+target_link_libraries(ffmpeg.avutil.obj PRIVATE ffmpeg.avcodec.headers)
+target_link_libraries(ffmpeg.avutil.PIC_obj PRIVATE ffmpeg.avcodec.headers)
 
 add_subdirectory(libavformat)
 add_subdirectory(libavdevice)
@@ -234,18 +263,6 @@ add_subdirectory(fftools)
 add_subdirectory(doc/examples)
 
 
-foreach(AVCODEC_COMPONENT_TARGET ${FFMPEG_AVCODEC_COMPONENTS})
-    if (NOT TARGET ${AVCODEC_COMPONENT_TARGET})
-        ffmpeg_message(FATAL_ERROR "config" "AVCODEC_COMPONENT_TARGET: ${AVCODEC_COMPONENT_TARGET} is not an existing target")
-    endif()
-endforeach()
-
-foreach(AVFORMAT_COMPONENT_TARGET ${FFMPEG_AVFORMAT_COMPONENTS})
-    if (NOT TARGET ${AVFORMAT_COMPONENT_TARGET})
-        ffmpeg_message(FATAL_ERROR "config" "AVFORMAT_COMPONENT_TARGET: ${AVFORMAT_COMPONENT_TARGET} is not an existing target")
-    endif()
-endforeach()
-
 foreach(AVDEVICE_COMPONENT_TARGET ${FFMPEG_AVDEVICE_COMPONENTS})
     if (NOT TARGET ${AVDEVICE_COMPONENT_TARGET})
         ffmpeg_message(FATAL_ERROR "config" "AVDEVICE_COMPONENT_TARGET: ${AVDEVICE_COMPONENT_TARGET} is not an existing target")
@@ -253,13 +270,8 @@ foreach(AVDEVICE_COMPONENT_TARGET ${FFMPEG_AVDEVICE_COMPONENTS})
 endforeach()
 
 
-target_link_libraries(ffmpeg.avutil.objects PRIVATE ffmpeg.global_config)
-foreach(AVCODEC_COMPONENT_TARGET ${FFMPEG_AVCODEC_COMPONENTS})
-    target_link_libraries(${AVCODEC_COMPONENT_TARGET} PRIVATE ffmpeg.global_config)
-endforeach()
-foreach(AVFORMAT_COMPONENT_TARGET ${FFMPEG_AVFORMAT_COMPONENTS})
-    target_link_libraries(${AVFORMAT_COMPONENT_TARGET} PRIVATE ffmpeg.global_config)
-endforeach()
+target_link_libraries(ffmpeg.avutil.obj PRIVATE ffmpeg.global_config)
+
 foreach(AVDEVICE_COMPONENT_TARGET ${FFMPEG_AVDEVICE_COMPONENTS})
     target_link_libraries(${AVDEVICE_COMPONENT_TARGET} PRIVATE ffmpeg.global_config)
 endforeach()
@@ -273,17 +285,20 @@ target_link_libraries(ffmpeg.postproc.objects PRIVATE ffmpeg.global_config)
 
 
 # AVUTIL
-add_library(ffmpeg.avutil.shared SHARED $<TARGET_OBJECTS:ffmpeg.avutil.objects>)
-add_library(ffmpeg.avutil.static STATIC $<TARGET_OBJECTS:ffmpeg.avutil.objects>)
+add_library(ffmpeg.avutil.shared SHARED $<TARGET_OBJECTS:ffmpeg.avutil.PIC_obj>)
+add_library(ffmpeg.avutil.static_pic STATIC $<TARGET_OBJECTS:ffmpeg.avutil.PIC_obj>)
+add_library(ffmpeg.avutil.static STATIC $<TARGET_OBJECTS:ffmpeg.avutil.obj>)
 
 # AVCODEC
 add_library(ffmpeg.avcodec.shared SHARED)
 target_link_libraries(ffmpeg.avcodec.shared PRIVATE ffmpeg.avutil.shared)
 add_library(ffmpeg.avcodec.static STATIC)
+add_library(ffmpeg.avcodec.static_pic STATIC)
 
 foreach(AVCODEC_COMPONENT_TARGET ${FFMPEG_AVCODEC_COMPONENTS})
-    target_sources(ffmpeg.avcodec.shared PRIVATE $<TARGET_OBJECTS:${AVCODEC_COMPONENT_TARGET}>)
-    target_sources(ffmpeg.avcodec.static PRIVATE $<TARGET_OBJECTS:${AVCODEC_COMPONENT_TARGET}>)
+    target_sources(ffmpeg.avcodec.shared PRIVATE $<TARGET_OBJECTS:ffmpeg.${AVCODEC_COMPONENT_TARGET}.PIC_obj>)
+    target_sources(ffmpeg.avcodec.static_pic PRIVATE $<TARGET_OBJECTS:ffmpeg.${AVCODEC_COMPONENT_TARGET}.PIC_obj>)
+    target_sources(ffmpeg.avcodec.static PRIVATE $<TARGET_OBJECTS:ffmpeg.${AVCODEC_COMPONENT_TARGET}.obj>)
 endforeach()
 
 # AVFORMAT
@@ -292,11 +307,13 @@ target_link_libraries(ffmpeg.avformat.shared PRIVATE
     ffmpeg.avutil.shared
     ffmpeg.avcodec.shared
 )
+add_library(ffmpeg.avformat.static_pic STATIC)
 add_library(ffmpeg.avformat.static STATIC)
 
 foreach(AVFORMAT_COMPONENT_TARGET ${FFMPEG_AVFORMAT_COMPONENTS})
-    target_sources(ffmpeg.avformat.shared PRIVATE $<TARGET_OBJECTS:${AVFORMAT_COMPONENT_TARGET}>)
-    target_sources(ffmpeg.avformat.static PRIVATE $<TARGET_OBJECTS:${AVFORMAT_COMPONENT_TARGET}>)
+    target_sources(ffmpeg.avformat.shared PRIVATE $<TARGET_OBJECTS:ffmpeg.${AVFORMAT_COMPONENT_TARGET}.PIC_obj>)
+    target_sources(ffmpeg.avformat.static_pic PRIVATE $<TARGET_OBJECTS:ffmpeg.${AVFORMAT_COMPONENT_TARGET}.PIC_obj>)
+    target_sources(ffmpeg.avformat.static PRIVATE $<TARGET_OBJECTS:ffmpeg.${AVFORMAT_COMPONENT_TARGET}.obj>)
 endforeach()
 
 # AVFILTER
@@ -306,9 +323,11 @@ target_link_libraries(ffmpeg.avfilter.shared PRIVATE
     ffmpeg.swscale.shared
 )
 add_library(ffmpeg.avfilter.static STATIC)
+add_library(ffmpeg.avfilter.static_pic STATIC)
 
 foreach(AVFILTER_COMPONENT_TARGET ${FFMPEG_AVFILTER_COMPONENTS})
     target_sources(ffmpeg.avfilter.shared PRIVATE $<TARGET_OBJECTS:${AVFILTER_COMPONENT_TARGET}>)
+    target_sources(ffmpeg.avfilter.static_pic PRIVATE $<TARGET_OBJECTS:${AVFILTER_COMPONENT_TARGET}>)
     target_sources(ffmpeg.avfilter.static PRIVATE $<TARGET_OBJECTS:${AVFILTER_COMPONENT_TARGET}>)
 endforeach()
 
@@ -320,18 +339,20 @@ target_link_libraries(ffmpeg.avdevice.shared PRIVATE
     ffmpeg.avformat.shared
 )
 add_library(ffmpeg.avdevice.static STATIC)
+add_library(ffmpeg.avdevice.static_pic STATIC)
 
 foreach(AVDEVICE_COMPONENT_TARGET ${FFMPEG_AVDEVICE_COMPONENTS})
     target_sources(ffmpeg.avdevice.shared PRIVATE $<TARGET_OBJECTS:${AVDEVICE_COMPONENT_TARGET}>)
+    target_sources(ffmpeg.avdevice.static_pic PRIVATE $<TARGET_OBJECTS:${AVDEVICE_COMPONENT_TARGET}>)
     target_sources(ffmpeg.avdevice.static PRIVATE $<TARGET_OBJECTS:${AVDEVICE_COMPONENT_TARGET}>)
 endforeach()
-
 
 
 # SWSCALE
 add_library(ffmpeg.swscale.shared SHARED $<TARGET_OBJECTS:ffmpeg.swscale.objects>)
 target_link_libraries(ffmpeg.swscale.shared PRIVATE ffmpeg.avutil.shared)
 add_library(ffmpeg.swscale.static STATIC $<TARGET_OBJECTS:ffmpeg.swscale.objects>)
+add_library(ffmpeg.swscale.static_pic STATIC $<TARGET_OBJECTS:ffmpeg.swscale.objects>)
 
 
 
@@ -339,30 +360,27 @@ add_library(ffmpeg.swscale.static STATIC $<TARGET_OBJECTS:ffmpeg.swscale.objects
 add_library(ffmpeg.swresample.shared SHARED $<TARGET_OBJECTS:ffmpeg.swresample.objects>)
 target_link_libraries(ffmpeg.swresample.shared PRIVATE ffmpeg.avutil.shared)
 add_library(ffmpeg.swresample.static STATIC $<TARGET_OBJECTS:ffmpeg.swresample.objects>)
+add_library(ffmpeg.swresample.static_pic STATIC $<TARGET_OBJECTS:ffmpeg.swresample.objects>)
 
 
 # POSTPROC
 add_library(ffmpeg.postproc.shared SHARED $<TARGET_OBJECTS:ffmpeg.postproc.objects>)
 target_link_libraries(ffmpeg.postproc.shared PRIVATE ffmpeg.avutil.shared)
 add_library(ffmpeg.postproc.static STATIC $<TARGET_OBJECTS:ffmpeg.postproc.objects>)
+add_library(ffmpeg.postproc.static_pic STATIC $<TARGET_OBJECTS:ffmpeg.postproc.objects>)
 
 
-# STATIC libffmpeg
-add_library(ffmpeg.static STATIC)
-list(APPEND FFMPEG_COMPONENTS
-    ffmpeg.avutil.objects
-    ${FFMPEG_AVCODEC_COMPONENTS}
-    ${FFMPEG_AVFORMAT_COMPONENTS}
-    ${FFMPEG_AVFILTER_COMPONENTS}
-    ${FFMPEG_AVDEVICE_COMPONENTS}
-
-    ffmpeg.swscale.objects
-    ffmpeg.swresample.objects
-    ffmpeg.postproc.objects
+list(APPEND FFMPEG_LIBS
+    avutil
+    avcodec
+    avformat
+    avdevice
+    avfilter
+    swscale
+    swresample
+    postproc
 )
-foreach(FFMPEG_OBJECT_COMPONENT ${FFMPEG_COMPONENTS})
-    target_sources(ffmpeg.static PRIVATE $<TARGET_OBJECTS:${FFMPEG_OBJECT_COMPONENT}>)
-endforeach()
+
 
 # FFTOOLS
 target_link_libraries(ffmpeg.fftools.ffmpeg.objects PRIVATE
@@ -398,16 +416,10 @@ target_link_libraries(ffmpeg PRIVATE
 )
 
 
-
 if(${FFMPEG_LIB_MATH_FOUND})
-    target_link_libraries(ffmpeg.avutil.shared PRIVATE ${FFMPEG_LIB_MATH})
-    target_link_libraries(ffmpeg.avcodec.shared PRIVATE ${FFMPEG_LIB_MATH})
-    target_link_libraries(ffmpeg.avformat.shared PRIVATE ${FFMPEG_LIB_MATH})
-    target_link_libraries(ffmpeg.avdevice.shared PRIVATE ${FFMPEG_LIB_MATH})
-    target_link_libraries(ffmpeg.swscale.shared PRIVATE ${FFMPEG_LIB_MATH})
-    target_link_libraries(ffmpeg.avfilter.shared PRIVATE ${FFMPEG_LIB_MATH})
-    target_link_libraries(ffmpeg.swresample.shared PRIVATE ${FFMPEG_LIB_MATH})
-    target_link_libraries(ffmpeg.postproc.shared PRIVATE ${FFMPEG_LIB_MATH})
+    foreach(FFMPEG_LIB ${FFMPEG_LIBS})
+        target_link_libraries(ffmpeg.${FFMPEG_LIB}.shared PRIVATE ${FFMPEG_LIB_MATH})
+    endforeach()
 
     target_link_libraries(ffmpeg PRIVATE ${FFMPEG_LIB_MATH})
 
@@ -422,33 +434,19 @@ if (MSVC)
 endif()
 
 if(${LINKER_USE_NO_UNDEFINED})
-    target_link_options(ffmpeg.avutil.shared PRIVATE "-Wl,--no-undefined")
-    target_link_options(ffmpeg.avcodec.shared PRIVATE "-Wl,--no-undefined")
-    target_link_options(ffmpeg.avformat.shared PRIVATE "-Wl,--no-undefined")
-    target_link_options(ffmpeg.avdevice.shared PRIVATE "-Wl,--no-undefined")
-    target_link_options(ffmpeg.avfilter.shared PRIVATE "-Wl,--no-undefined")
-    target_link_options(ffmpeg.swscale.shared PRIVATE "-Wl,--no-undefined")
-    target_link_options(ffmpeg.swresample.shared PRIVATE "-Wl,--no-undefined")
-    target_link_options(ffmpeg.postproc.shared PRIVATE "-Wl,--no-undefined")
+    foreach(FFMPEG_LIB ${FFMPEG_LIBS})
+        target_link_options(ffmpeg.${FFMPEG_LIB}.shared PRIVATE "-Wl,--no-undefined")
+        set_property(TARGET ffmpeg.${FFMPEG_LIB}.shared PROPERTY OUTPUT_NAME ${FFMPEG_LIB})
+    endforeach()
 endif()
 
-set_property(TARGET ffmpeg.avutil.shared PROPERTY OUTPUT_NAME "avutil")
-set_property(TARGET ffmpeg.avcodec.shared PROPERTY OUTPUT_NAME "avcodec")
-set_property(TARGET ffmpeg.avformat.shared PROPERTY OUTPUT_NAME "avformat")
-set_property(TARGET ffmpeg.avdevice.shared PROPERTY OUTPUT_NAME "avdevice")
-set_property(TARGET ffmpeg.avfilter.shared PROPERTY OUTPUT_NAME "avfilter")
-set_property(TARGET ffmpeg.swscale.shared PROPERTY OUTPUT_NAME "swscale")
-set_property(TARGET ffmpeg.swresample.shared PROPERTY OUTPUT_NAME "swresample")
-set_property(TARGET ffmpeg.postproc.shared PROPERTY OUTPUT_NAME "postproc")
-set(ffmpeg.avutil.static.artefact_name "avutil")
-set(ffmpeg.avcodec.static.artefact_name "avcodec")
-set(ffmpeg.avformat.static.artefact_name "avformat")
-set(ffmpeg.avdevice.static.artefact_name "avdevice")
-set(ffmpeg.avfilter.static.artefact_name "avfilter")
-set(ffmpeg.swscale.static.artefact_name "swscale")
-set(ffmpeg.swresample.static.artefact_name "swresample")
-set(ffmpeg.postproc.static.artefact_name "postproc")
+foreach(FFMPEG_LIB ${FFMPEG_LIBS})
+    set_property(TARGET ffmpeg.${FFMPEG_LIB}.shared PROPERTY OUTPUT_NAME ${FFMPEG_LIB})
+endforeach()
 
+foreach(FFMPEG_LIB ${FFMPEG_LIBS})
+    set(FFMPEG_${FFMPEG_LIB}_STATIC_ARTEFACT_NAME "${FFMPEG_LIB}")
+endforeach()
 set(ffmpeg.static.artefact_name "ffmpeg")
 
 
@@ -457,28 +455,36 @@ if(WIN32)
     set(APPEND_STATIC_TO_ARTEFACT_NAME TRUE)
 endif()
 if(${APPEND_STATIC_TO_ARTEFACT_NAME})
-    set(ffmpeg.avutil.static.artefact_name "avutil_static")
-    set(ffmpeg.avcodec.static.artefact_name "avcodec_static")
-    set(ffmpeg.avformat.static.artefact_name "avformat_static")
-    set(ffmpeg.avdevice.static.artefact_name "avdevice_static")
-    set(ffmpeg.avfilter.static.artefact_name "avfilter_static")
-    set(ffmpeg.swscale.static.artefact_name "swscale_static")
-    set(ffmpeg.swresample.static.artefact_name "swresample_static")
-    set(ffmpeg.postproc.static.artefact_name "postproc_static")
-
+    foreach(FFMPEG_LIB ${FFMPEG_LIBS})
+        set(FFMPEG_${FFMPEG_LIB}_STATIC_ARTEFACT_NAME "${FFMPEG_LIB}_static")
+    endforeach()
     set(ffmpeg.static.artefact_name "ffmpeg_static")
 endif()
-set_property(TARGET ffmpeg.avutil.static PROPERTY OUTPUT_NAME ${ffmpeg.avutil.static.artefact_name})
-set_property(TARGET ffmpeg.avcodec.static PROPERTY OUTPUT_NAME ${ffmpeg.avcodec.static.artefact_name})
-set_property(TARGET ffmpeg.avformat.static PROPERTY OUTPUT_NAME ${ffmpeg.avformat.static.artefact_name})
-set_property(TARGET ffmpeg.avdevice.static PROPERTY OUTPUT_NAME ${ffmpeg.avdevice.static.artefact_name})
-set_property(TARGET ffmpeg.avfilter.static PROPERTY OUTPUT_NAME ${ffmpeg.avfilter.static.artefact_name})
-set_property(TARGET ffmpeg.swscale.static PROPERTY OUTPUT_NAME ${ffmpeg.swscale.static.artefact_name})
-set_property(TARGET ffmpeg.swresample.static PROPERTY OUTPUT_NAME ${ffmpeg.swresample.static.artefact_name})
-set_property(TARGET ffmpeg.postproc.static PROPERTY OUTPUT_NAME ${ffmpeg.postproc.static.artefact_name})
+
+foreach(FFMPEG_LIB ${FFMPEG_LIBS})
+    set_property(TARGET ffmpeg.${FFMPEG_LIB}.static PROPERTY OUTPUT_NAME ${FFMPEG_${FFMPEG_LIB}_STATIC_ARTEFACT_NAME})
+    set_property(TARGET ffmpeg.${FFMPEG_LIB}.static_pic PROPERTY OUTPUT_NAME "${FFMPEG_${FFMPEG_LIB}_STATIC_ARTEFACT_NAME}_pic")
+endforeach()
+
+add_library(ffmpeg.static STATIC)
+list(APPEND FFMPEG_LEGACY_TARGETS
+    ${FFMPEG_AVFILTER_COMPONENTS}
+    ${FFMPEG_AVDEVICE_COMPONENTS}
+
+    ffmpeg.swscale.objects
+    ffmpeg.swresample.objects
+    ffmpeg.postproc.objects
+)
 
 set_property(TARGET ffmpeg.static PROPERTY OUTPUT_NAME ${ffmpeg.static.artefact_name})
 
+foreach(FFMPEG_COMPONENT ${FFMPEG_COMPONENTS})
+    target_sources(ffmpeg.static PRIVATE $<TARGET_OBJECTS:ffmpeg.${FFMPEG_COMPONENT}.obj>)
+endforeach()
+
+foreach(LEGACY_TARGET ${FFMPEG_LEGACY_TARGETS})
+    target_sources(ffmpeg.static PRIVATE $<TARGET_OBJECTS:${LEGACY_TARGET}>)
+endforeach()
 
 set(FFMPEG_DISABLE_WARNINGS_DEFAULT 1)
 ffmpeg_message(WARNING "config" "TODO: MSVC have option for disabling warnings - use it FFMPEG_DISABLE_WARNINGS")
@@ -489,9 +495,20 @@ option(FFMPEG_DISABLE_WARNINGS "Disable ffmpeg compilation warnings" ${FFMPEG_DI
 
 
 if(FFMPEG_DISABLE_WARNINGS)
-    foreach(FFMPEG_OBJECT_COMPONENT ${FFMPEG_COMPONENTS})
-        target_compile_options(${FFMPEG_OBJECT_COMPONENT} PRIVATE "-w")
+    foreach(FFMPEG_COMPONENT ${FFMPEG_COMPONENTS})
+        target_compile_options(ffmpeg.${FFMPEG_COMPONENT}.PIC_obj PRIVATE "-w")
+        target_compile_options(ffmpeg.${FFMPEG_COMPONENT}.obj PRIVATE "-w")
+    endforeach()
+
+    foreach(LEGACY_TARGET ${FFMPEG_LEGACY_TARGETS})
+        target_compile_options(${LEGACY_TARGET} PRIVATE "-w")
     endforeach()
 
     target_compile_options(ffmpeg.fftools.ffmpeg.objects PRIVATE "-w")
 endif()
+
+
+foreach(FFMPEG_COMPONENT ${FFMPEG_COMPONENTS})
+    target_link_libraries(ffmpeg.${FFMPEG_COMPONENT}.PIC_obj PRIVATE ffmpeg.global_config)
+    target_link_libraries(ffmpeg.${FFMPEG_COMPONENT}.obj PRIVATE ffmpeg.global_config)
+endforeach()

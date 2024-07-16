@@ -1,8 +1,8 @@
-list(APPEND ffmpeg.avformat.core.sources
+list(APPEND FFMPEG_AVFORMAT_CORE_SOURCES
     img2.c
 )
 
-list(APPEND ffmpeg.avformat.core.sources_prepended
+list(APPEND FFMPEG_AVFORMAT_CORE_SOURCES_PREPENDED
     img2dec.c "#include \"libavutil/internal.h\""
     img2enc.c "#include \"libavutil/internal.h\""
 )

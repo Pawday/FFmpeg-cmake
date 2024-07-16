@@ -1,5 +1,5 @@
-#list(APPEND ffmpeg.avformat.core.sources h264dec.c)
-list(APPEND ffmpeg.avformat.core.sources_prepended
+#list(APPEND FFMPEG_AVFORMAT_CORE_SOURCES h264dec.c)
+list(APPEND FFMPEG_AVFORMAT_CORE_SOURCES_PREPENDED
     h264dec.c "#include \"libavutil/internal.h\""
 )
 
