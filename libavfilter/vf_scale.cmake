@@ -1,8 +1,12 @@
 list(APPEND FFMPEG_AVFILTER_FILTERS_LIST ff_vf_scale)
 
-add_library(ffmpeg.avfilter.scale.objects OBJECT
+ff_create_component(avfilter.scale)
+
+list(APPEND AVFILTER_SCALE_SOURCES
     vf_scale.c
     scale_eval.c
 )
 
-list(APPEND FFMPEG_AVFILTER_COMPONENTS ffmpeg.avfilter.scale.objects)
+ff_component_sources(avfilter.scale AVFILTER_SCALE_SOURCES)
+
+list(APPEND FFMPEG_AVFILTER_COMPONENTS avfilter.scale)

@@ -1,17 +1,17 @@
 add_library(ffmpeg.avfilter.config INTERFACE)
 add_library(ffmpeg.avfilter.headers INTERFACE)
-add_library(ffmpeg.avfilter.core.objects OBJECT)
+ff_create_component(avfilter.core)
 
-list(APPEND FFMPEG_AVFILTER_COMPONENTS ffmpeg.avfilter.core.objects)
+list(APPEND FFMPEG_AVFILTER_COMPONENTS avfilter.core)
 list(APPEND FFMPEG_AVFILTER_FILTERS_LIST)
 
 
-list(APPEND ffmpeg.avfilter.sources
+list(APPEND FFMPEG_AVFILTER_SOURCES
     buffersrc.c
     buffersink.c
 )
 
-list(APPEND ffmpeg.avfilter.sources
+list(APPEND FFMPEG_AVFILTER_SOURCES
     allfilters.c
     audio.c
     avfilter.c
@@ -32,7 +32,7 @@ set(AVFILTER_GENERATED_INCLUDE_DIRECTORY "${FFMPEG_AVFILTER_GENERATED_DIRECTORY}
 
 include(avfilter_headers.cmake)
 
-gen_headers(ffmpeg.avfilter.header_names CMAKE_CURRENT_SOURCE_DIR "${AVFILTER_GENERATED_INCLUDE_DIRECTORY}/libavfilter")
+gen_headers(FFMPEG_AVFILTER_HEADER_NAMES CMAKE_CURRENT_SOURCE_DIR "${AVFILTER_GENERATED_INCLUDE_DIRECTORY}/libavfilter")
 
 list(APPEND FFMPEG_AVFILTER_FILTERS_LIST
     ff_asrc_abuffer #standard audio filter defined in buffersrc.c
@@ -60,19 +60,16 @@ target_include_directories(ffmpeg.avfilter.headers INTERFACE
 )
 
 
-target_sources(ffmpeg.avfilter.core.objects PRIVATE ${ffmpeg.avfilter.sources})
+ff_component_sources(avfilter.core FFMPEG_AVFILTER_SOURCES)
 
 
 foreach(FFMPEG_AVFILTER_COMPONENT ${FFMPEG_AVFILTER_COMPONENTS})
-    set_property(TARGET ${FFMPEG_AVFILTER_COMPONENT} PROPERTY POSITION_INDEPENDENT_CODE TRUE)
-    target_link_libraries(${FFMPEG_AVFILTER_COMPONENT} PRIVATE
-        ffmpeg.avfilter.headers
-        ffmpeg.avfilter.config
-        ffmpeg.avutil.config
-        ffmpeg.avutil.headers
-        ffmpeg.swscale.config
-        ffmpeg.swscale.headers
-    )
+    ff_component_link_library(${FFMPEG_AVFILTER_COMPONENT} PRIVATE ffmpeg.avfilter.headers)
+    ff_component_link_library(${FFMPEG_AVFILTER_COMPONENT} PRIVATE ffmpeg.avfilter.config)
+    ff_component_link_library(${FFMPEG_AVFILTER_COMPONENT} PRIVATE ffmpeg.avutil.config)
+    ff_component_link_library(${FFMPEG_AVFILTER_COMPONENT} PRIVATE ffmpeg.avutil.headers)
+    ff_component_link_library(${FFMPEG_AVFILTER_COMPONENT} PRIVATE ffmpeg.swscale.config)
+    ff_component_link_library(${FFMPEG_AVFILTER_COMPONENT} PRIVATE ffmpeg.swscale.headers)
 endforeach()
 
 set(FFMPEG_AVFILTER_COMPONENTS ${FFMPEG_AVFILTER_COMPONENTS} PARENT_SCOPE)
