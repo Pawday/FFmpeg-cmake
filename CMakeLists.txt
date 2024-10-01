@@ -45,25 +45,26 @@ function(ffmpeg_message MODE MODULE_NAME MESSAGE)
     message(STATUS "[ffmpeg] (${MODE}) [${MODULE_NAME}] ${MESSAGE}")
 endfunction()
 
-macro(ff_create_component COMPONENT_NAME)
+
+function(ff_create_component COMPONENT_NAME)
     list(APPEND FFMPEG_COMPONENTS ${COMPONENT_NAME})
-    set(FFMPEG_COMPONENTS ${FFMPEG_COMPONENTS} PARENT_SCOPE)
+    set(FFMPEG_COMPONENTS ${FFMPEG_COMPONENTS} CACHE INTERNAL "")
     add_library(ffmpeg.${COMPONENT_NAME}.PIC_obj OBJECT)
     set_property(TARGET ffmpeg.${COMPONENT_NAME}.PIC_obj PROPERTY POSITION_INDEPENDENT_CODE TRUE)
     add_library(ffmpeg.${COMPONENT_NAME}.obj OBJECT)
-endmacro()
+endfunction()
 
 
-macro(ff_component_sources COMPONENT_NAME SOURCES_LIST)
+function(ff_component_sources COMPONENT_NAME SOURCES_LIST)
     target_sources(ffmpeg.${COMPONENT_NAME}.PIC_obj PUBLIC ${${SOURCES_LIST}})
     target_sources(ffmpeg.${COMPONENT_NAME}.obj PUBLIC ${${SOURCES_LIST}})
-endmacro()
+endfunction()
 
 
-macro(ff_component_link_library COMPONENT_NAME MODE LIBRARY_TARGET)
+function(ff_component_link_library COMPONENT_NAME MODE LIBRARY_TARGET)
     target_link_libraries(ffmpeg.${COMPONENT_NAME}.PIC_obj ${MODE} ${LIBRARY_TARGET})
     target_link_libraries(ffmpeg.${COMPONENT_NAME}.obj ${MODE} ${LIBRARY_TARGET})
-endmacro()
+endfunction()
 
 
 function(gen_prepend_hack SOURCE_PATCH_MAP WORKING_DIR MODULE_NAME OUTPUT_LIST)
